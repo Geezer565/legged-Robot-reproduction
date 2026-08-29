@@ -21,6 +21,8 @@
     <depend>ocs2_self_collision_visualization</depend>
 
     <depend>angles</depend>
+    <depend>realtime_tools</depend>
+    <depend>std_msgs</depend>
 
     <exec_depend>controller_manager</exec_depend>
 

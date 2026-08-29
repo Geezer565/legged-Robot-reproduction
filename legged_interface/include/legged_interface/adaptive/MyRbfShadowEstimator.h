@@ -1,0 +1,74 @@
+#pragma once
+
+#include "legged_interface/adaptive/AdaptiveTypes.h"
+
+namespace legged {
+namespace adaptive {
+
+struct MyRbfShadowSettings {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  vector6_t residualScale = vector6_t::Ones();
+  vector6_t discrepancyScale = vector6_t::Ones();
+  vector6_t outputScale = vector6_t::Ones();
+  matrix_t centers;
+  matrix_t widths;
+  vector6_t trackingGain = vector6_t::Zero();
+  vector6_t predictionGain = vector6_t::Zero();
+  vector6_t leakage = vector6_t::Zero();
+};
+
+struct MyRbfShadowStepResult {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  matrix_t feature;
+  matrix_t basis;
+  vector6_t estimateBeforeUpdate = vector6_t::Zero();
+  vector6_t estimateAfterUpdate = vector6_t::Zero();
+  matrix_t weightDerivative;
+  matrix_t weightsAfterUpdate;
+};
+
+MyRbfShadowSettings createSymmetricGridMyRbfShadowSettings(
+    scalar_t linearExtent, scalar_t angularExtent, scalar_t widthRatio,
+    const vector6_t& residualScale, const vector6_t& discrepancyScale,
+    const vector6_t& outputScale, const vector6_t& trackingGain,
+    const vector6_t& predictionGain, const vector6_t& leakage);
+
+/**
+ * Diagnostics-only six-axis RBF estimator for the first Go2 migration stage.
+ * It has no API for modifying the MPC model, WBC command, or actuator output.
+ */
+class MyRbfShadowEstimator final {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  static constexpr Eigen::Index kAxisCount = 6;
+  static constexpr Eigen::Index kInputDimension = 2;
+  static constexpr Eigen::Index kGaussianNodeCount = 25;
+  static constexpr Eigen::Index kBasisCount = 26;
+  static constexpr bool kControlInjectionEnabled = false;
+
+  explicit MyRbfShadowEstimator(MyRbfShadowSettings settings);
+
+  MyRbfShadowStepResult step(const vector6_t& residualFiltered,
+                             const vector6_t& sigma, scalar_t dt);
+
+  const vector6_t& estimate() const { return previousEstimate_; }
+  const matrix_t& weights() const { return weights_; }
+  bool controlInjectionEnabled() const { return kControlInjectionEnabled; }
+  void reset();
+
+ private:
+  matrix_t computeFeature(const vector6_t& residualFiltered) const;
+  matrix_t computeBasis(const matrix_t& feature) const;
+  vector6_t evaluate(const matrix_t& basis) const;
+  void validateSettings() const;
+
+  MyRbfShadowSettings settings_;
+  matrix_t weights_ = matrix_t::Zero(kBasisCount, kAxisCount);
+  vector6_t previousEstimate_ = vector6_t::Zero();
+};
+
+}  // namespace adaptive
+}  // namespace legged

@@ -1,0 +1,26 @@
+# Go2 closed-loop MyRBF v4. The estimator remains the calibrated v3 network;
+# v4 adds compensation-aware observation and safe six-dimensional allocation.
+update_period: 0.01
+time_tolerance: 0.003
+filter_alpha: 0.5
+linear_extent: 2.0
+angular_extent: 4.0
+width_ratio: 0.85
+lambda_linear: 2.0
+lambda_angular: 1.5
+residual_scale: [18.40147689318011, 18.757520233566048, 17.534482646627026, 2.3370077074651903, 5.4660415889306133, 1.7261893548458138]
+discrepancy_scale: [18.40147689318011, 18.757520233566048, 17.534482646627026, 2.3370077074651903, 5.4660415889306133, 1.7261893548458138]
+output_scale: [18.40147689318011, 18.757520233566048, 17.534482646627026, 2.3370077074651903, 5.4660415889306133, 1.7261893548458138]
+tracking_gain: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+prediction_gain: [0.00100409, 0.05, 0.00110584, 0.0622523, 0.004, 0.114105]
+leakage: [0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
+
+control_interface: wrench_allocator
+compensation_aware_observer: true
+control_gain_vector: [0.25, 0.25, 0.15, 0.08, 0.08, 0.08]
+control_magnitude_limit: [8.0, 8.0, 15.0, 1.5, 1.5, 1.5]
+control_rate_limit_vector: [20.0, 20.0, 30.0, 3.0, 3.0, 3.0]
+allocator_friction_coefficient: 0.5
+allocator_minimum_normal_force: 2.0
+allocator_maximum_force_delta: 15.0
+allocator_damping: 0.00001

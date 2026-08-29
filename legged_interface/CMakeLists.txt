@@ -49,6 +49,12 @@ link_directories(
 )
 
 add_library(${PROJECT_NAME}
+        src/adaptive/MyRbfPredictionResidualObserver.cpp
+        src/adaptive/MyRbfFyCompensation.cpp
+        src/adaptive/MyRbfWrenchCompensation.cpp
+        src/adaptive/MyRbfTrackingError.cpp
+        src/adaptive/MyRbfShadowEstimator.cpp
+        src/adaptive/MyRbfShadowPipeline.cpp
         src/constraint/EndEffectorLinearConstraint.cpp
         src/constraint/FrictionConeConstraint.cpp
         src/constraint/ZeroForceConstraint.cpp
@@ -67,6 +73,44 @@ target_link_libraries(${PROJECT_NAME}
         )
 
 target_compile_options(${PROJECT_NAME} PUBLIC ${OCS2_CXX_FLAGS})
+
+if (CATKIN_ENABLE_TESTING)
+    catkin_add_gtest(${PROJECT_NAME}_myrbf_shadow_estimator_test
+            test/adaptive/TestMyRbfShadowEstimator.cpp)
+    target_link_libraries(${PROJECT_NAME}_myrbf_shadow_estimator_test
+            ${PROJECT_NAME} ${catkin_LIBRARIES} ${pinocchio_LIBRARIES} gtest_main)
+    target_compile_options(${PROJECT_NAME}_myrbf_shadow_estimator_test PUBLIC ${OCS2_CXX_FLAGS})
+
+    catkin_add_gtest(${PROJECT_NAME}_myrbf_prediction_residual_observer_test
+            test/adaptive/TestMyRbfPredictionResidualObserver.cpp)
+    target_link_libraries(${PROJECT_NAME}_myrbf_prediction_residual_observer_test
+            ${PROJECT_NAME} ${catkin_LIBRARIES} ${pinocchio_LIBRARIES} gtest_main)
+    target_compile_options(${PROJECT_NAME}_myrbf_prediction_residual_observer_test PUBLIC ${OCS2_CXX_FLAGS})
+
+    catkin_add_gtest(${PROJECT_NAME}_myrbf_shadow_pipeline_test
+            test/adaptive/TestMyRbfShadowPipeline.cpp)
+    target_link_libraries(${PROJECT_NAME}_myrbf_shadow_pipeline_test
+            ${PROJECT_NAME} ${catkin_LIBRARIES} ${pinocchio_LIBRARIES} gtest_main)
+    target_compile_options(${PROJECT_NAME}_myrbf_shadow_pipeline_test PUBLIC ${OCS2_CXX_FLAGS})
+
+    catkin_add_gtest(${PROJECT_NAME}_myrbf_tracking_error_test
+            test/adaptive/TestMyRbfTrackingError.cpp)
+    target_link_libraries(${PROJECT_NAME}_myrbf_tracking_error_test
+            ${PROJECT_NAME} ${catkin_LIBRARIES} ${pinocchio_LIBRARIES} gtest_main)
+    target_compile_options(${PROJECT_NAME}_myrbf_tracking_error_test PUBLIC ${OCS2_CXX_FLAGS})
+
+    catkin_add_gtest(${PROJECT_NAME}_myrbf_fy_compensation_test
+            test/adaptive/TestMyRbfFyCompensation.cpp)
+    target_link_libraries(${PROJECT_NAME}_myrbf_fy_compensation_test
+            ${PROJECT_NAME} ${catkin_LIBRARIES} ${pinocchio_LIBRARIES} gtest_main)
+    target_compile_options(${PROJECT_NAME}_myrbf_fy_compensation_test PUBLIC ${OCS2_CXX_FLAGS})
+
+    catkin_add_gtest(${PROJECT_NAME}_myrbf_wrench_compensation_test
+            test/adaptive/TestMyRbfWrenchCompensation.cpp)
+    target_link_libraries(${PROJECT_NAME}_myrbf_wrench_compensation_test
+            ${PROJECT_NAME} ${catkin_LIBRARIES} ${pinocchio_LIBRARIES} gtest_main)
+    target_compile_options(${PROJECT_NAME}_myrbf_wrench_compensation_test PUBLIC ${OCS2_CXX_FLAGS})
+endif ()
 
 #########################
 ###   CLANG TOOLING   ###

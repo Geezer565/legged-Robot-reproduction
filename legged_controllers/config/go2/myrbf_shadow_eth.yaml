@@ -1,0 +1,16 @@
+# ETHRBF comparison: same frozen six-axis RBF representation as MyRBF, but
+# weights are updated only by the ETH tracking sliding variable.
+update_period: 0.01
+time_tolerance: 0.003
+filter_alpha: 0.5
+linear_extent: 2.0
+angular_extent: 4.0
+width_ratio: 0.85
+lambda_linear: 2.0
+lambda_angular: 1.5
+residual_scale: [18.40147689318011, 18.757520233566048, 17.534482646627026, 2.3370077074651903, 5.4660415889306133, 1.7261893548458138]
+discrepancy_scale: [18.40147689318011, 18.757520233566048, 17.534482646627026, 2.3370077074651903, 5.4660415889306133, 1.7261893548458138]
+output_scale: [18.40147689318011, 18.757520233566048, 17.534482646627026, 2.3370077074651903, 5.4660415889306133, 1.7261893548458138]
+tracking_gain: [0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+prediction_gain: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+leakage: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

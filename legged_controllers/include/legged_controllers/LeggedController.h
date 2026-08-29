@@ -4,9 +4,13 @@
 
 #pragma once
 
+#include <limits>
+
 #include <controller_interface/multi_interface_controller.h>
 #include <hardware_interface/imu_sensor_interface.h>
 #include <legged_common/hardware_interface/ContactSensorInterface.h>
+#include <realtime_tools/realtime_publisher.h>
+#include <std_msgs/Float64MultiArray.h>
 
 #include <ocs2_centroidal_model/CentroidalModelRbdConversions.h>
 #include <ocs2_core/misc/Benchmark.h>
@@ -15,6 +19,10 @@
 
 #include <legged_estimation/StateEstimateBase.h>
 #include <legged_interface/LeggedInterface.h>
+#include <legged_interface/adaptive/MyRbfShadowPipeline.h>
+#include <legged_interface/adaptive/MyRbfFyCompensation.h>
+#include <legged_interface/adaptive/MyRbfTrackingError.h>
+#include <legged_interface/adaptive/MyRbfWrenchCompensation.h>
 #include <legged_wbc/WbcBase.h>
 
 #include "legged_controllers/SafetyChecker.h"
@@ -42,6 +50,18 @@ class LeggedController : public controller_interface::MultiInterfaceController<H
   virtual void setupMpc();
   virtual void setupMrt();
   virtual void setupStateEstimate(const std::string& taskFile, bool verbose);
+  void updateMyRbfShadowObservation(const vector_t& optimizedState,
+                                    const vector_t& optimizedInput);
+  void queueMyRbfShadowPrediction();
+  void applyMyRbfControlCompensation(vector_t& optimizedInput,
+                                     std::size_t plannedMode, scalar_t dt);
+  void applyMyRbfFyCompensation(vector_t& optimizedInput,
+                                std::size_t plannedMode, scalar_t dt);
+  void applyMyRbfWrenchCompensation(vector_t& optimizedInput,
+                                    std::size_t plannedMode, scalar_t dt);
+  void publishMyRbfShadowDiagnostics(
+      const adaptive::MyRbfShadowPipelineResult& result,
+      const vector_t& desiredRbdState);
 
   // Interface
   std::shared_ptr<LeggedInterface> leggedInterface_;
@@ -68,6 +88,46 @@ class LeggedController : public controller_interface::MultiInterfaceController<H
   std::shared_ptr<LeggedRobotVisualizer> robotVisualizer_;
   std::shared_ptr<LeggedSelfCollisionVisualization> selfCollisionVisualization_;
   ros::Publisher observationPublisher_;
+
+  // The estimator remains read-only by default. A separately gated,
+  // single-axis low-authority WBC input correction can be enabled explicitly.
+  bool enableMyRbfShadow_ = false;
+  bool enableMyRbfControlInjection_ = false;
+  scalar_t myRbfShadowUpdatePeriod_ = 0.01;
+  scalar_t myRbfShadowTimeTolerance_ = 0.003;
+  scalar_t myRbfShadowLambdaLinear_ = 2.0;
+  scalar_t myRbfShadowLambdaAngular_ = 1.5;
+  scalar_t myRbfControlGain_ = 0.1;
+  scalar_t myRbfControlForceLimit_ = 3.0;
+  scalar_t myRbfControlRateLimit_ = 5.0;
+  scalar_t myRbfAppliedFy_ = 0.0;
+  std::string myRbfControlInterface_ = "legacy_fy";
+  bool myRbfCompensationAwareObserver_ = false;
+  adaptive::vector6_t myRbfControlGainVector_ =
+      adaptive::vector6_t::Constant(0.1);
+  adaptive::vector6_t myRbfControlMagnitudeLimit_ =
+      (adaptive::vector6_t() << 3.0, 3.0, 6.0, 0.5, 0.5, 0.5).finished();
+  adaptive::vector6_t myRbfControlRateLimitVector_ =
+      (adaptive::vector6_t() << 5.0, 5.0, 10.0, 1.0, 1.0, 1.0).finished();
+  scalar_t myRbfAllocatorFrictionCoefficient_ = 0.5;
+  scalar_t myRbfAllocatorMinimumNormalForce_ = 2.0;
+  scalar_t myRbfAllocatorMaximumForceDelta_ = 15.0;
+  scalar_t myRbfAllocatorDamping_ = 1e-5;
+  scalar_t myRbfAllocatorScale_ = 0.0;
+  adaptive::vector6_t myRbfRequestedWrench_ = adaptive::vector6_t::Zero();
+  adaptive::vector6_t myRbfAppliedWrench_ = adaptive::vector6_t::Zero();
+  bool myRbfShadowPredictionPending_ = false;
+  scalar_t myRbfShadowPredictionTime_ =
+      std::numeric_limits<scalar_t>::quiet_NaN();
+  std::size_t myRbfShadowValidSampleCount_ = 0;
+  std::size_t myRbfShadowRejectedSampleCount_ = 0;
+  std::size_t myRbfShadowRolloutFailureCount_ = 0;
+  std::unique_ptr<adaptive::MyRbfShadowPipeline> myRbfShadowPipeline_;
+  std::unique_ptr<PinocchioInterface> myRbfPinocchioInterface_;
+  std::unique_ptr<CentroidalModelPinocchioMapping> myRbfPinocchioMapping_;
+  std::unique_ptr<PinocchioEndEffectorKinematics> myRbfEeKinematics_;
+  std::unique_ptr<realtime_tools::RealtimePublisher<std_msgs::Float64MultiArray>>
+      myRbfShadowPublisher_;
 
  private:
   std::thread mpcThread_;

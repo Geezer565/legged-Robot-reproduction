@@ -1,5 +1,11 @@
 # legged_control
 
+## MyRBF Go2 migration (2026-08-29)
+
+MyRBF v4 is now connected to the Go2 controller through a safe six-axis body-wrench interface. The observer accounts for compensation already applied by the controller, and the requested wrench is distributed across stance feet while checking contact and friction limits. Baseline, ETHRBF, MyRBF v3, and the previous Fy-only interface remain available for reproducible comparisons.
+
+See [`docs/MYRBF_GO2_V4_CONTROL_INTERFACE_20260829.md`](docs/MYRBF_GO2_V4_CONTROL_INTERFACE_20260829.md) for the run commands, measured constant and sinusoidal results, safety limits, and code map. The earlier shadow-migration record remains in [`docs/MYRBF_GO2_SHADOW_MIGRATION_RESULT_20260829.md`](docs/MYRBF_GO2_SHADOW_MIGRATION_RESULT_20260829.md).
+
 FIRST RUN "install.sh" in "legged_examples/legged_unitree/unitree_sdk2-main"
 
 sudo ./install.sh

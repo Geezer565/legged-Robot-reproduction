@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+
+<launch>
+    <arg name="robot_type" default="go2"/>
+    <arg name="gui" default="false"/>
+    <arg name="duration" default="15.0"/>
+    <arg name="state_output" default="/tmp/myrbf_go2_state.csv"/>
+    <arg name="shadow_output" default="/tmp/myrbf_go2_shadow.csv"/>
+    <arg name="wrench_output" default="/tmp/myrbf_go2_wrench.csv"/>
+    <arg name="enable_shadow" default="true"/>
+    <arg name="enable_control_injection" default="false"/>
+    <arg name="control_gain" default="0.1"/>
+    <arg name="control_force_limit" default="3.0"/>
+    <arg name="control_rate_limit" default="5.0"/>
+    <arg name="myrbf_config" default="myrbf_shadow_v3.yaml"/>
+    <arg name="enable_wrench" default="false"/>
+    <arg name="wrench_profile" default="constant"/>
+    <arg name="wrench_axis" default="fy"/>
+    <arg name="wrench_value" default="20.0"/>
+    <arg name="wrench_amplitude" default="0.0"/>
+    <arg name="wrench_frequency" default="0.5"/>
+    <arg name="wrench_delay" default="5.0"/>
+    <arg name="wrench_duration" default="5.0"/>
+
+    <param name="/controllers/legged_controller/enable_myrbf_shadow"
+           value="$(arg enable_shadow)"/>
+    <param name="/controllers/legged_controller/enable_myrbf_control_injection"
+           value="$(arg enable_control_injection)"/>
+    <rosparam command="load"
+              file="$(find legged_controllers)/config/go2/$(arg myrbf_config)"
+              ns="/controllers/legged_controller/myrbf_shadow"/>
+    <param name="/controllers/legged_controller/myrbf_shadow/control_gain"
+           value="$(arg control_gain)"/>
+    <param name="/controllers/legged_controller/myrbf_shadow/control_force_limit"
+           value="$(arg control_force_limit)"/>
+    <param name="/controllers/legged_controller/myrbf_shadow/control_rate_limit"
+           value="$(arg control_rate_limit)"/>
+
+    <include file="$(find legged_unitree_description)/launch/empty_world.launch">
+        <arg name="robot_type" value="$(arg robot_type)"/>
+        <arg name="paused" value="true"/>
+        <arg name="gui" value="$(arg gui)"/>
+    </include>
+    <include file="$(find legged_controllers)/launch/load_controller.launch">
+        <arg name="robot_type" value="$(arg robot_type)"/>
+        <arg name="cheater" value="false"/>
+        <arg name="enable_gait_command" value="false"/>
+        <arg name="enable_controller_loader" value="false"/>
+    </include>
+
+    <node name="myrbf_unpause_when_controller_ready"
+          pkg="legged_controllers" type="unpause_when_controller_ready.py"
+          output="screen" required="false"/>
+
+    <node name="myrbf_state_recorder" pkg="legged_controllers"
+          type="record_stage8c.py" output="screen"
+          required="true"
+          args="--output $(arg state_output) --duration $(arg duration) --rate 50"/>
+    <node if="$(arg enable_shadow)" name="myrbf_shadow_recorder"
+          pkg="legged_controllers" type="record_myrbf_shadow.py" output="screen"
+          args="--output $(arg shadow_output) --duration $(arg duration)"/>
+    <node if="$(arg enable_wrench)" name="myrbf_wrench_injector"
+          pkg="legged_controllers" type="apply_myrbf_wrench.py" output="screen"
+          args="--output $(arg wrench_output) --profile $(arg wrench_profile) --axis $(arg wrench_axis) --value $(arg wrench_value) --amplitude $(arg wrench_amplitude) --frequency $(arg wrench_frequency) --delay $(arg wrench_delay) --duration $(arg wrench_duration)"/>
+</launch>

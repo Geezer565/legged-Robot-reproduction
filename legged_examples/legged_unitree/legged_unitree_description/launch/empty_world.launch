@@ -1,5 +1,7 @@
 <launch>
     <arg name="robot_type" default="$(env ROBOT_TYPE)" doc="Robot type: [a1, aliengo, go1, laikago, go2]"/>
+    <arg name="paused" default="false"/>
+    <arg name="gui" default="true"/>
 
     <param name="legged_robot_description" command="$(find xacro)/xacro $(find legged_unitree_description)/urdf/robot.xacro
        robot_type:=$(arg robot_type)
@@ -10,9 +12,16 @@
     <rosparam file="$(find legged_gazebo)/config/default.yaml" command="load"/>
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name" value="$(find legged_gazebo)/worlds/empty_world.world"/>
+        <arg name="paused" value="$(arg paused)"/>
+        <arg name="gui" value="$(arg gui)"/>
     </include>
     <!-- push robot_description to factory and spawn robot in gazebo -->
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" clear_params="true"
-          args="-z 0.5 -param legged_robot_description -urdf -model $(arg robot_type)" output="screen"/>
+          args="-z 0.35 -param legged_robot_description -urdf -model $(arg robot_type)
+                -J LF_HAA -0.10 -J LF_HFE 0.72 -J LF_KFE -1.44
+                -J LH_HAA -0.10 -J LH_HFE 0.72 -J LH_KFE -1.44
+                -J RF_HAA 0.10 -J RF_HFE 0.72 -J RF_KFE -1.44
+                -J RH_HAA 0.10 -J RH_HFE 0.72 -J RH_KFE -1.44"
+          output="screen"/>
 
 </launch>
