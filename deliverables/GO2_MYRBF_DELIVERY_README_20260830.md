@@ -6,6 +6,7 @@
 
 - `source_overlay`：保持目录结构覆盖到老师的 Go2 仓库根目录；
 - `source_overlay/docs/GO2_MYRBF_EXPERIMENT_AND_CODE_DELIVERY_20260830.md`：完整实验、迁移和运行报告；
+- `source_overlay/results/go2_method_compare_20260830/EXPERIMENT_REPORT.md`：三组正式实验的条件、曲线、表格和分析；
 - `patches/go2_myrbf_source.patch`：相对于提交 `7d87e51` 的源码补丁；
 - `MANIFEST.sha256`：文件校验值；
 - `BASE_AND_HEAD.txt`：迁移起点和当前交付提交。
