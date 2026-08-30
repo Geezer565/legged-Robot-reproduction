@@ -11,17 +11,17 @@
 
 容器中的 catkin 工作区为 `/tmp/myrbf_go2_catkin`。当前源码目录是容器快照，不是实时映射；修改宿主机源码后，必须同步到容器再编译。
 
-## 最新调参与四方法对比（2026-08-30）
+## M01 无扰动行走实验（2026-08-30）
+
+已完成 Baseline、ETHRBF 和当前 MyRBF 在 0.05、0.10、0.15 m/s 三种速度下的九场无扰动行走实验。目标轨迹、实际状态、无扰动补偿、完整指标和原始记录见 [`results/go2_m01_nodisturbance_20260830/M01_EXPERIMENT_REPORT.md`](results/go2_m01_nodisturbance_20260830/M01_EXPERIMENT_REPORT.md)。本轮只完成 M01，没有开始负重、多地形或复合扰动实验。
+
+## 当前锁定方法与正式对比存档（2026-08-30）
 
 已在 Go2 Gazebo 中完成参数筛选，并锁定通用配置 `myrbf_shadow_v4_go2_robust.yaml`。随后使用未参与调参的侧向多频扰动、等效 4 kg 负重和侧倾多频力矩，对 Baseline、ETHRBF、原 MyRBF v4 和 Robust MyRBF 做了同条件对比。完整设计、参数选择和结论见 [`docs/MYRBF_GO2_TUNING_AND_COMPARISON_20260830.md`](docs/MYRBF_GO2_TUNING_AND_COMPARISON_20260830.md)，正式结果见 [`results/go2_method_compare_20260830/RESULT_SUMMARY.md`](results/go2_method_compare_20260830/RESULT_SUMMARY.md)。
 
 面向队友的完整实验能力、迁移过程、代码地图、安装与运行说明见 [`docs/GO2_MYRBF_EXPERIMENT_AND_CODE_DELIVERY_20260830.md`](docs/GO2_MYRBF_EXPERIMENT_AND_CODE_DELIVERY_20260830.md)。
 
 包含三组正式实验条件、扰动公式、对比曲线和结果分析的独立报告见 [`results/go2_method_compare_20260830/EXPERIMENT_REPORT.md`](results/go2_method_compare_20260830/EXPERIMENT_REPORT.md)。
-
-## 最新 Gazebo 多场景实验（2026-08-30）
-
-已完成站立多频侧向力、周期侧倾力矩、低速行走等效负重和低速行走不规则侧向力，共 9 场 Gazebo 仿真。实验设计见 [`docs/MYRBF_GO2_GAZEBO_EXPERIMENTS_20260830.md`](docs/MYRBF_GO2_GAZEBO_EXPERIMENTS_20260830.md)，结果和原始记录见 [`results/gazebo_campaign_20260830/RESULT_SUMMARY.md`](results/gazebo_campaign_20260830/RESULT_SUMMARY.md)。
 
 ## MyRBF Go2 migration (2026-08-29)
 

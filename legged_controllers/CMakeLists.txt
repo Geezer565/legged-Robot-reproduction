@@ -89,6 +89,7 @@ target_link_libraries(legged_target_trajectories_publisher
 target_compile_options(legged_target_trajectories_publisher PRIVATE ${OCS2_CXX_FLAGS})
 
 catkin_install_python(PROGRAMS
+        scripts/analyze_m01_nodisturbance.py
         scripts/analyze_myrbf_v4_interface.py
         scripts/analyze_myrbf_campaign.py
         scripts/apply_myrbf_wrench.py
@@ -96,6 +97,11 @@ catkin_install_python(PROGRAMS
         scripts/record_myrbf_shadow.py
         scripts/record_stage8c.py
         scripts/unpause_when_controller_ready.py
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+        )
+
+install(PROGRAMS
+        scripts/run_m01_nodisturbance_campaign.sh
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
         )
 

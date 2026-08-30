@@ -13,7 +13,7 @@
 | MyRBF v3 | 使用 `myrbf_shadow_v3_go2.yaml`，关闭控制注入时为观察模式 |
 | MyRBF v4 | 使用 `myrbf_shadow_v4_go2.yaml`，打开控制注入 |
 
-详细原理、运行命令、结果与限制见 `docs/MYRBF_GO2_V4_CONTROL_INTERFACE_20260829.md`。`results/v4_interface_validation` 保存本轮无扰动、20 N 恒力和 15 N 正弦扰动的原始记录与自动统计。
+详细原理、运行命令、结果与限制见 `docs/MYRBF_GO2_V4_CONTROL_INTERFACE_20260829.md`。早期接口验证的原始记录已经从活动工作区清理，需要时可从 Git 历史恢复。
 
 在已经配置好的 Docker 环境里执行下面的检查。
 

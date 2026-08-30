@@ -1,0 +1,35 @@
+{
+  "pass": true,
+  "details": [
+    {
+      "speed_mps": 0.05,
+      "position_not_degraded": true,
+      "orientation_not_degraded": true,
+      "force_command_bounded": true,
+      "torque_command_bounded": true,
+      "safe_height": true,
+      "four_contact_finish": true,
+      "pass": true
+    },
+    {
+      "speed_mps": 0.1,
+      "position_not_degraded": true,
+      "orientation_not_degraded": true,
+      "force_command_bounded": true,
+      "torque_command_bounded": true,
+      "safe_height": true,
+      "four_contact_finish": true,
+      "pass": true
+    },
+    {
+      "speed_mps": 0.15,
+      "position_not_degraded": true,
+      "orientation_not_degraded": true,
+      "force_command_bounded": true,
+      "torque_command_bounded": true,
+      "safe_height": true,
+      "four_contact_finish": true,
+      "pass": true
+    }
+  ]
+}

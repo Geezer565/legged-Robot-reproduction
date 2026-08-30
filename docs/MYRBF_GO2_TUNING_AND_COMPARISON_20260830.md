@@ -149,7 +149,7 @@ ETHRBF 使用 [`myrbf_shadow_eth_go2_closed_loop.yaml`](../legged_controllers/co
 | ETH 对比配置 | [`legged_controllers/config/go2/myrbf_shadow_eth_go2_closed_loop.yaml`](../legged_controllers/config/go2/myrbf_shadow_eth_go2_closed_loop.yaml) |
 | 自动分析与绘图 | [`legged_controllers/scripts/analyze_myrbf_campaign.py`](../legged_controllers/scripts/analyze_myrbf_campaign.py) |
 | 分析脚本测试 | [`legged_controllers/test/test_myrbf_campaign_analysis.py`](../legged_controllers/test/test_myrbf_campaign_analysis.py) |
-| 调参原始记录和筛选图 | [`results/go2_myrbf_tuning_20260830`](../results/go2_myrbf_tuning_20260830) |
+| 调参原始记录和筛选图 | 已从活动工作区清理，可从 Git 历史恢复 |
 | 正式对比原始记录和图 | [`results/go2_method_compare_20260830`](../results/go2_method_compare_20260830) |
 
 ## 9. 可以得出的结论

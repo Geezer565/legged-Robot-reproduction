@@ -86,7 +86,7 @@ roslaunch legged_controllers myrbf_shadow_gazebo.launch \
 | v4 参数 | [`legged_controllers/config/go2/myrbf_shadow_v4_go2.yaml`](../legged_controllers/config/go2/myrbf_shadow_v4_go2.yaml) |
 | 六维诊断记录 | [`legged_controllers/scripts/record_myrbf_shadow.py`](../legged_controllers/scripts/record_myrbf_shadow.py) |
 | 结果统计 | [`legged_controllers/scripts/analyze_myrbf_v4_interface.py`](../legged_controllers/scripts/analyze_myrbf_v4_interface.py) |
-| 原始验证数据 | [`results/v4_interface_validation`](../results/v4_interface_validation) |
+| 原始验证数据 | 已从活动工作区清理，可从 Git 历史恢复 |
 
 ## 目前的边界
 

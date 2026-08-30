@@ -888,7 +888,7 @@ MPC 当前策略输出 → MyRBF 六维接触力补偿 → WBC
 | Baseline 回退 | 通过 | 已保存的 1554 个样本中实际侧向补偿最大值为 0 |
 | 最终改动检查 | 通过 | `git diff --check` 无输出；改动仅包含本接入手册、验收数据、README 入口和三处过时说明修正 |
 
-本轮原始验收数据和简要结论保存在 [`results/integration_acceptance_20260830/RESULT_SUMMARY.md`](../../../results/integration_acceptance_20260830/RESULT_SUMMARY.md)。这两场只用于确认接入正确，不替代后续论文实验。
+本轮原始验收数据已经在 M01 开始前从活动工作区清理，需要时可从 Git 历史恢复。这两场只用于确认接入正确，不替代后续论文实验。
 
 ## 7. 最终交付内容
 

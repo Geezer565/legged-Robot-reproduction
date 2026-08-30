@@ -193,4 +193,4 @@ RobustMyRBF 相对 Baseline 将侧倾均方根降低 12.8%，最大侧倾降低 
 - 图、PDF、自动统计：[`analysis`](analysis)
 - 完整调参说明：[`../../docs/MYRBF_GO2_TUNING_AND_COMPARISON_20260830.md`](../../docs/MYRBF_GO2_TUNING_AND_COMPARISON_20260830.md)
 - 迁移和代码交付说明：[`../../docs/GO2_MYRBF_EXPERIMENT_AND_CODE_DELIVERY_20260830.md`](../../docs/GO2_MYRBF_EXPERIMENT_AND_CODE_DELIVERY_20260830.md)
-- 原始数据：本目录下的 `V1_*`、`V2_*`、`V3_*` 文件夹
+- 原始数据：已从活动工作区清理，保存在 [`../../deliverables/go2_myrbf_go2_gazebo_delivery_20260830.zip`](../../deliverables/go2_myrbf_go2_gazebo_delivery_20260830.zip) 中

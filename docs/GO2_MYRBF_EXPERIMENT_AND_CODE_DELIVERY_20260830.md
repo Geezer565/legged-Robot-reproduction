@@ -301,4 +301,4 @@ roslaunch legged_controllers myrbf_shadow_gazebo.launch \
 - `results`：正式结果摘要、三张 PNG/PDF 图和自动统计；
 - `MANIFEST.sha256`：所有交付文件的完整性校验值。
 
-交付包不包含底层依赖和完整原始 CSV。完整原始数据仍保存在当前仓库的 `results/go2_method_compare_20260830` 与 `results/go2_myrbf_tuning_20260830` 中。
+交付包不包含底层依赖，但已经包含 V1–V3 十二场正式对比的原始记录、图和报告。活动工作区只保留正式报告与图；早期接口检查、调参扫描和中间实验记录已经清理。
