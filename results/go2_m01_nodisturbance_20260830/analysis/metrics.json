@@ -26,6 +26,8 @@
     "end_mode": 15,
     "motion_start_s": 4.223,
     "motion_end_s": 12.81,
+    "motion_ros_duration_s": 8.587,
+    "motion_wall_duration_s": 8.750131760010845,
     "commanded_speed_mps": 0.04999999999999994
   },
   {
@@ -55,6 +57,8 @@
     "end_mode": 15,
     "motion_start_s": 4.2,
     "motion_end_s": 12.975,
+    "motion_ros_duration_s": 8.774999999999999,
+    "motion_wall_duration_s": 8.950015151000116,
     "commanded_speed_mps": 0.04999999999999996
   },
   {
@@ -84,6 +88,8 @@
     "end_mode": 15,
     "motion_start_s": 4.213,
     "motion_end_s": 13.105,
+    "motion_ros_duration_s": 8.892,
+    "motion_wall_duration_s": 8.980816035997123,
     "commanded_speed_mps": 0.049999999999999954
   },
   {
@@ -113,6 +119,8 @@
     "end_mode": 15,
     "motion_start_s": 4.207,
     "motion_end_s": 12.912,
+    "motion_ros_duration_s": 8.705000000000002,
+    "motion_wall_duration_s": 8.950026060003438,
     "commanded_speed_mps": 0.09999999999999992
   },
   {
@@ -142,6 +150,8 @@
     "end_mode": 15,
     "motion_start_s": 4.173,
     "motion_end_s": 12.96,
+    "motion_ros_duration_s": 8.787,
+    "motion_wall_duration_s": 8.95004047799739,
     "commanded_speed_mps": 0.09999999999999992
   },
   {
@@ -171,6 +181,8 @@
     "end_mode": 15,
     "motion_start_s": 4.159,
     "motion_end_s": 12.809,
+    "motion_ros_duration_s": 8.649999999999999,
+    "motion_wall_duration_s": 8.949995388000389,
     "commanded_speed_mps": 0.09999999999999992
   },
   {
@@ -200,6 +212,8 @@
     "end_mode": 15,
     "motion_start_s": 4.062,
     "motion_end_s": 12.689,
+    "motion_ros_duration_s": 8.626999999999999,
+    "motion_wall_duration_s": 8.9500141999888,
     "commanded_speed_mps": 0.14999999999999958
   },
   {
@@ -229,6 +243,8 @@
     "end_mode": 15,
     "motion_start_s": 3.9619999999999997,
     "motion_end_s": 11.732,
+    "motion_ros_duration_s": 7.77,
+    "motion_wall_duration_s": 8.950174969999352,
     "commanded_speed_mps": 0.14999999999999958
   },
   {
@@ -258,6 +274,8 @@
     "end_mode": 15,
     "motion_start_s": 4.158,
     "motion_end_s": 12.94,
+    "motion_ros_duration_s": 8.782,
+    "motion_wall_duration_s": 8.949967334003304,
     "commanded_speed_mps": 0.14999999999999958
   }
 ]

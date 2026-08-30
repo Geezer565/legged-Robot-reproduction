@@ -40,9 +40,9 @@ def shadow_row(time_s, actual_x, desired_x, applied_force=0.0):
 class M01AnalysisTest(unittest.TestCase):
     def test_active_motion_window(self):
         rows = [
-            {"active": "0", "ros_time": "1.0", "vx": "0.0"},
-            {"active": "1", "ros_time": "2.0", "vx": "0.1"},
-            {"active": "1", "ros_time": "3.0", "vx": "0.1"},
+            {"active": "0", "ros_time": "1.0", "wall_elapsed": "1.0", "vx": "0.0"},
+            {"active": "1", "ros_time": "2.0", "wall_elapsed": "2.0", "vx": "0.1"},
+            {"active": "1", "ros_time": "3.0", "wall_elapsed": "3.0", "vx": "0.1"},
         ]
         onset, end, active = MODULE.active_motion_window(rows)
         self.assertEqual((onset, end), (2.0, 3.0))
@@ -50,8 +50,8 @@ class M01AnalysisTest(unittest.TestCase):
 
     def test_case_metrics_use_walking_window_and_target_error(self):
         motion = [
-            {"active": "1", "ros_time": "2.0", "vx": "0.1"},
-            {"active": "1", "ros_time": "3.0", "vx": "0.1"},
+            {"active": "1", "ros_time": "2.0", "wall_elapsed": "2.0", "vx": "0.1"},
+            {"active": "1", "ros_time": "3.0", "wall_elapsed": "3.0", "vx": "0.1"},
         ]
         shadow = [
             shadow_row(1.0, 0.0, 0.0),
@@ -67,6 +67,7 @@ class M01AnalysisTest(unittest.TestCase):
         self.assertAlmostEqual(result["forward_rmse_cm"], (2.5) ** 0.5)
         self.assertAlmostEqual(result["applied_force_rms_n"], 1.0)
         self.assertAlmostEqual(result["minimum_base_z_m"], 0.33)
+        self.assertAlmostEqual(result["motion_wall_duration_s"], 1.0)
         self.assertEqual(result["end_mode"], 15)
         self.assertEqual(series["time_s"], [0.0, 1.0])
 

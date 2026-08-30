@@ -134,6 +134,11 @@ def analyze_case_rows(name, speed, shadow_rows, motion_rows, state_rows):
         "end_mode": int(float(finite_state[-1]["observation_mode"])),
         "motion_start_s": onset,
         "motion_end_s": end,
+        "motion_ros_duration_s": end - onset,
+        "motion_wall_duration_s": (
+            float(active_motion[-1]["wall_elapsed"])
+            - float(active_motion[0]["wall_elapsed"])
+        ),
         "commanded_speed_mps": mean([float(row["vx"]) for row in active_motion]),
     }
     series = {
@@ -308,6 +313,8 @@ def plot_summary(path, results):
 def write_report(path, results, assessment):
     lookup = grouped(results)
     speeds = sorted({result["speed_mps"] for result in results})
+    wall_durations = [result["motion_wall_duration_s"] for result in results]
+    ros_durations = [result["motion_ros_duration_s"] for result in results]
     lines = [
         "# M01 无扰动行走实验报告",
         "",
@@ -315,7 +322,8 @@ def write_report(path, results, assessment):
         "",
         "- Go2 Gazebo Classic，平整地面，`static_walk`；",
         "- 速度为 0.05、0.10、0.15 m/s；",
-        "- 每次行走约 9 s，不施加外力和额外负重；",
+        "- 行走命令按墙钟时间运行约 9 s，不施加外力和额外负重；",
+        f"- 实际墙钟有效时长为 {min(wall_durations):.2f}–{max(wall_durations):.2f} s；对应 Gazebo 仿真时间为 {min(ros_durations):.2f}–{max(ros_durations):.2f} s；",
         "- 比较 Baseline、ETHRBF 和当前 MyRBF；",
         "- 每个条件当前只运行 1 次；每场重新启动并清空学习历史。",
         "",
@@ -384,7 +392,7 @@ def write_report(path, results, assessment):
         "",
         "## 结论边界",
         "",
-        "本轮用于检查正常行走时的副作用，每个条件只有一次运行，不能替代最终重复统计，也不代表真机结果。",
+        "本轮用于检查正常行走时的副作用，每个条件只有一次运行，不能替代最终重复统计，也不代表真机结果。各场使用相同墙钟时长，但 Gazebo 实时速度有差异；后续正式统计应改为统一仿真时间或按共同时间窗口比较。",
     ])
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
