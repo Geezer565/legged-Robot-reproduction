@@ -36,8 +36,9 @@ MyRbfShadowSettings createSymmetricGridMyRbfShadowSettings(
     const vector6_t& predictionGain, const vector6_t& leakage);
 
 /**
- * Diagnostics-only six-axis RBF estimator for the first Go2 migration stage.
- * It has no API for modifying the MPC model, WBC command, or actuator output.
+ * Pure six-axis RBF estimator. It never writes controller outputs directly;
+ * the separately gated controller adapter may consume estimate() for closed-loop
+ * compensation.
  */
 class MyRbfShadowEstimator final {
  public:

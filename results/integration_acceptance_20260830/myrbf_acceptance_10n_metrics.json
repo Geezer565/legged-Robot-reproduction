@@ -1,0 +1,19 @@
+[
+  {
+    "name": "acceptance_10n",
+    "onset_s": 4.017,
+    "end_s": 6.953,
+    "sample_count": 420,
+    "max_abs_y_cm": 1.1923042295066892,
+    "rms_y_cm": 1.025220629698956,
+    "max_abs_roll_deg": 0.8255881506187956,
+    "rms_roll_deg": 0.44212013173599524,
+    "estimate_rmse_n": 1.8884826518451037,
+    "estimate_correlation": 0.0,
+    "mean_abs_applied_fy_n": 2.0672964975502395,
+    "max_abs_applied_fy_n": 2.647485289848891,
+    "minimum_allocator_scale": 1.0,
+    "valid_samples": 921,
+    "rejected_samples": 124
+  }
+]

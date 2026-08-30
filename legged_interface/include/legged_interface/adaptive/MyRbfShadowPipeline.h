@@ -15,7 +15,11 @@ struct MyRbfShadowPipelineResult {
   MyRbfShadowStepResult estimator;
 };
 
-/** Diagnostics-only composition of prediction residual and MyRBF update. */
+/**
+ * Composition of prediction-residual observation and MyRBF update. The
+ * pipeline remains independent of the controller; its estimate can be logged
+ * only or consumed by a separately gated control adapter.
+ */
 class MyRbfShadowPipeline final {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

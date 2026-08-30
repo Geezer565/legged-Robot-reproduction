@@ -89,8 +89,9 @@ class LeggedController : public controller_interface::MultiInterfaceController<H
   std::shared_ptr<LeggedSelfCollisionVisualization> selfCollisionVisualization_;
   ros::Publisher observationPublisher_;
 
-  // The estimator remains read-only by default. A separately gated,
-  // single-axis low-authority WBC input correction can be enabled explicitly.
+  // Estimation and control injection are independently gated. Injection is
+  // disabled by default; an explicitly selected adapter may apply either the
+  // legacy Fy-only correction or the bounded six-axis wrench allocation.
   bool enableMyRbfShadow_ = false;
   bool enableMyRbfControlInjection_ = false;
   scalar_t myRbfShadowUpdatePeriod_ = 0.01;
