@@ -4,3 +4,4 @@ results/go2_myrbf_tuning_20260830/**/*.csv binary
 results/go2_myrbf_tuning_20260830/**/*.log binary
 results/go2_method_compare_20260830/**/*.csv binary
 results/go2_method_compare_20260830/**/*.log binary
+deliverables/*.zip binary
