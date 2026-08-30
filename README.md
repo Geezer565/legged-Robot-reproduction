@@ -15,6 +15,8 @@
 
 已在 Go2 Gazebo 中完成参数筛选，并锁定通用配置 `myrbf_shadow_v4_go2_robust.yaml`。随后使用未参与调参的侧向多频扰动、等效 4 kg 负重和侧倾多频力矩，对 Baseline、ETHRBF、原 MyRBF v4 和 Robust MyRBF 做了同条件对比。完整设计、参数选择和结论见 [`docs/MYRBF_GO2_TUNING_AND_COMPARISON_20260830.md`](docs/MYRBF_GO2_TUNING_AND_COMPARISON_20260830.md)，正式结果见 [`results/go2_method_compare_20260830/RESULT_SUMMARY.md`](results/go2_method_compare_20260830/RESULT_SUMMARY.md)。
 
+面向队友的完整实验能力、迁移过程、代码地图、安装与运行说明见 [`docs/GO2_MYRBF_EXPERIMENT_AND_CODE_DELIVERY_20260830.md`](docs/GO2_MYRBF_EXPERIMENT_AND_CODE_DELIVERY_20260830.md)。
+
 ## 最新 Gazebo 多场景实验（2026-08-30）
 
 已完成站立多频侧向力、周期侧倾力矩、低速行走等效负重和低速行走不规则侧向力，共 9 场 Gazebo 仿真。实验设计见 [`docs/MYRBF_GO2_GAZEBO_EXPERIMENTS_20260830.md`](docs/MYRBF_GO2_GAZEBO_EXPERIMENTS_20260830.md)，结果和原始记录见 [`results/gazebo_campaign_20260830/RESULT_SUMMARY.md`](results/gazebo_campaign_20260830/RESULT_SUMMARY.md)。
