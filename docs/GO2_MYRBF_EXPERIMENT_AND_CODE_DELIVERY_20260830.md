@@ -88,6 +88,7 @@ RobustMyRBF 相对 Baseline：
 
 完整数字、调参过程和三张正式图见：
 
+- [`results/go2_method_compare_20260830/EXPERIMENT_REPORT.md`](../results/go2_method_compare_20260830/EXPERIMENT_REPORT.md)
 - [`MYRBF_GO2_TUNING_AND_COMPARISON_20260830.md`](MYRBF_GO2_TUNING_AND_COMPARISON_20260830.md)
 - [`results/go2_method_compare_20260830/RESULT_SUMMARY.md`](../results/go2_method_compare_20260830/RESULT_SUMMARY.md)
 
@@ -238,7 +239,7 @@ roslaunch legged_controllers myrbf_shadow_gazebo.launch \
   gui:=true duration:=15 \
   enable_shadow:=true enable_control_injection:=true \
   myrbf_config:=myrbf_shadow_v4_go2_robust.yaml \
-  enable_motion:=true motion_vx:=0.08 motion_duration:=7 \
+  enable_motion:=true motion_vx:=0.08 motion_duration:=9 \
   enable_wrench:=false
 ```
 
@@ -249,9 +250,9 @@ roslaunch legged_controllers myrbf_shadow_gazebo.launch \
   gui:=true duration:=15 \
   enable_shadow:=true enable_control_injection:=true \
   myrbf_config:=myrbf_shadow_v4_go2_robust.yaml \
-  enable_motion:=true motion_vx:=0.08 motion_duration:=7 \
+  enable_motion:=true motion_vx:=0.08 motion_duration:=9 \
   enable_wrench:=true wrench_axis:=fz wrench_profile:=constant \
-  wrench_value:=-39.2 wrench_delay:=5 wrench_duration:=6
+  wrench_value:=-39.2 wrench_delay:=6 wrench_duration:=6
 ```
 
 ### 7.3 行走时多频侧向扰动
@@ -261,11 +262,11 @@ roslaunch legged_controllers myrbf_shadow_gazebo.launch \
   gui:=true duration:=15 \
   enable_shadow:=true enable_control_injection:=true \
   myrbf_config:=myrbf_shadow_v4_go2_robust.yaml \
-  enable_motion:=true motion_vx:=0.08 motion_duration:=7 \
+  enable_motion:=true motion_vx:=0.08 motion_duration:=9 \
   enable_wrench:=true wrench_axis:=fy wrench_profile:=multisine \
   wrench_value:=0 wrench_amplitude:=10 wrench_frequency:=0.22 \
   wrench_secondary_amplitude:=6 wrench_secondary_frequency:=0.77 \
-  wrench_delay:=5 wrench_duration:=6
+  wrench_delay:=6 wrench_duration:=6
 ```
 
 ### 7.4 切换对比方法

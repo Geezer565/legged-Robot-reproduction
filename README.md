@@ -17,6 +17,8 @@
 
 面向队友的完整实验能力、迁移过程、代码地图、安装与运行说明见 [`docs/GO2_MYRBF_EXPERIMENT_AND_CODE_DELIVERY_20260830.md`](docs/GO2_MYRBF_EXPERIMENT_AND_CODE_DELIVERY_20260830.md)。
 
+包含三组正式实验条件、扰动公式、对比曲线和结果分析的独立报告见 [`results/go2_method_compare_20260830/EXPERIMENT_REPORT.md`](results/go2_method_compare_20260830/EXPERIMENT_REPORT.md)。
+
 ## 最新 Gazebo 多场景实验（2026-08-30）
 
 已完成站立多频侧向力、周期侧倾力矩、低速行走等效负重和低速行走不规则侧向力，共 9 场 Gazebo 仿真。实验设计见 [`docs/MYRBF_GO2_GAZEBO_EXPERIMENTS_20260830.md`](docs/MYRBF_GO2_GAZEBO_EXPERIMENTS_20260830.md)，结果和原始记录见 [`results/gazebo_campaign_20260830/RESULT_SUMMARY.md`](results/gazebo_campaign_20260830/RESULT_SUMMARY.md)。

@@ -12,6 +12,8 @@
 
 四种方法为 Baseline、ETHRBF、OriginalV4 和 RobustMyRBF。所有正式运行正常结束；V1、V2 完成低速行走并回到四脚接触，V3 保持站立。详细设计、调参过程、完整表格和限制见 [`docs/MYRBF_GO2_TUNING_AND_COMPARISON_20260830.md`](../../docs/MYRBF_GO2_TUNING_AND_COMPARISON_20260830.md)。
 
+包含完整实验条件、扰动公式、三张曲线和逐组分析的报告见 [`EXPERIMENT_REPORT.md`](EXPERIMENT_REPORT.md)。
+
 ## 图和自动统计
 
 - [`analysis/01_walk_multisine_fy.png`](analysis/01_walk_multisine_fy.png)：行走多频侧向扰动；
