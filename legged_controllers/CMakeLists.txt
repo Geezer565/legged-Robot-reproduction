@@ -12,6 +12,9 @@ find_package(catkin REQUIRED
         legged_wbc
         legged_estimation
         controller_interface
+        gazebo_msgs
+        geometry_msgs
+        ocs2_msgs
         ocs2_legged_robot_ros
         ocs2_self_collision_visualization
         angles
@@ -34,6 +37,9 @@ catkin_package(
         legged_wbc
         legged_estimation
         controller_interface
+        gazebo_msgs
+        geometry_msgs
+        ocs2_msgs
         ocs2_legged_robot_ros
         ocs2_self_collision_visualization
         angles
@@ -85,6 +91,7 @@ target_compile_options(legged_target_trajectories_publisher PRIVATE ${OCS2_CXX_F
 catkin_install_python(PROGRAMS
         scripts/analyze_myrbf_v4_interface.py
         scripts/apply_myrbf_wrench.py
+        scripts/publish_myrbf_motion.py
         scripts/record_myrbf_shadow.py
         scripts/record_stage8c.py
         scripts/unpause_when_controller_ready.py
@@ -94,6 +101,7 @@ catkin_install_python(PROGRAMS
 if (CATKIN_ENABLE_TESTING)
     catkin_add_nosetests(test/test_myrbf_shadow_recording.py)
     catkin_add_nosetests(test/test_myrbf_wrench_profile.py)
+    catkin_add_nosetests(test/test_myrbf_motion_profile.py)
 endif ()
 
 #########################

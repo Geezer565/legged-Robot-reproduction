@@ -8,11 +8,14 @@ import time
 
 
 AXES = ("fx", "fy", "fz", "tx", "ty", "tz")
+PROFILES = ("constant", "sine", "multisine", "irregular")
+IRREGULAR_LEVELS = (0.0, 1.0, -0.45, 0.75, -1.0, 0.3, -0.8, 0.55)
+IRREGULAR_DURATIONS = (0.35, 0.55, 0.25, 0.65, 0.4, 0.3, 0.5, 0.45)
 
 
 def validate_profile(profile, delay, duration, value):
-    if profile not in ("constant", "sine"):
-        raise ValueError("profile must be constant or sine")
+    if profile not in PROFILES:
+        raise ValueError("unknown wrench profile")
     if not math.isfinite(delay) or delay < 0.0:
         raise ValueError("delay must be finite and nonnegative")
     if not math.isfinite(duration) or duration <= 0.0:
@@ -25,26 +28,52 @@ def profile_is_active(elapsed, delay, duration):
     return delay <= elapsed < delay + duration
 
 
-def profile_value(elapsed, profile, delay, duration, value, amplitude, frequency):
+def irregular_level(active_time):
+    cycle_duration = sum(IRREGULAR_DURATIONS)
+    phase = active_time % cycle_duration
+    boundary = 0.0
+    for level, segment_duration in zip(IRREGULAR_LEVELS, IRREGULAR_DURATIONS):
+        boundary += segment_duration
+        if phase < boundary:
+            return level
+    return IRREGULAR_LEVELS[-1]
+
+
+def profile_value(elapsed, profile, delay, duration, value, amplitude, frequency,
+                  secondary_amplitude=0.0, secondary_frequency=1.0):
     validate_profile(profile, delay, duration, value)
     if not profile_is_active(elapsed, delay, duration):
         return 0.0
     if profile == "constant":
         return value
-    if not math.isfinite(amplitude) or not math.isfinite(frequency) or frequency <= 0.0:
-        raise ValueError("sine amplitude must be finite and frequency must be positive")
+    if not math.isfinite(amplitude):
+        raise ValueError("wrench amplitude must be finite")
     active_time = elapsed - delay
-    return value + amplitude * math.sin(2.0 * math.pi * frequency * active_time)
+    if profile == "irregular":
+        return value + amplitude * irregular_level(active_time)
+    if not math.isfinite(frequency) or frequency <= 0.0:
+        raise ValueError("frequency must be finite and positive")
+    primary = amplitude * math.sin(2.0 * math.pi * frequency * active_time)
+    if profile == "sine":
+        return value + primary
+    if (not math.isfinite(secondary_amplitude) or
+            not math.isfinite(secondary_frequency) or secondary_frequency <= 0.0):
+        raise ValueError("secondary amplitude must be finite and frequency must be positive")
+    secondary = secondary_amplitude * math.sin(
+        2.0 * math.pi * secondary_frequency * active_time + math.pi / 6.0)
+    return value + primary + secondary
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Apply a repeatable wrench to the Go2 base in Gazebo.")
     parser.add_argument("--body", default="go2::base")
     parser.add_argument("--axis", choices=AXES, default="fy")
-    parser.add_argument("--profile", choices=("constant", "sine"), default="constant")
+    parser.add_argument("--profile", choices=PROFILES, default="constant")
     parser.add_argument("--value", type=float, default=20.0)
     parser.add_argument("--amplitude", type=float, default=0.0)
     parser.add_argument("--frequency", type=float, default=0.5)
+    parser.add_argument("--secondary-amplitude", type=float, default=0.0)
+    parser.add_argument("--secondary-frequency", type=float, default=1.0)
     parser.add_argument("--delay", type=float, default=5.0)
     parser.add_argument("--duration", type=float, default=5.0)
     parser.add_argument("--rate", type=float, default=50.0)
@@ -98,7 +127,8 @@ def main():
 
             scalar = profile_value(
                 elapsed, args.profile, args.delay, args.duration,
-                args.value, args.amplitude, args.frequency)
+                args.value, args.amplitude, args.frequency,
+                args.secondary_amplitude, args.secondary_frequency)
             wrench_values = [0.0] * 6
             wrench_values[AXES.index(args.axis)] = scalar
             active = profile_is_active(elapsed, args.delay, args.duration)

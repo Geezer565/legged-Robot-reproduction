@@ -1,5 +1,20 @@
 # legged_control
 
+## 当前 Docker 环境
+
+本项目继续使用老师原有的 OCS2 环境，不另外创建依赖环境。Windows 上的启动程序和容器入口为：
+
+```powershell
+& 'C:\Users\lenovo\AppData\Local\Programs\DockerDesktop\Docker Desktop.exe'
+& 'C:\Users\lenovo\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe' exec -it legged-robot-noetic bash
+```
+
+容器中的 catkin 工作区为 `/tmp/myrbf_go2_catkin`。当前源码目录是容器快照，不是实时映射；修改宿主机源码后，必须同步到容器再编译。
+
+## 最新 Gazebo 多场景实验（2026-08-30）
+
+已完成站立多频侧向力、周期侧倾力矩、低速行走等效负重和低速行走不规则侧向力，共 9 场 Gazebo 仿真。实验设计见 [`docs/MYRBF_GO2_GAZEBO_EXPERIMENTS_20260830.md`](docs/MYRBF_GO2_GAZEBO_EXPERIMENTS_20260830.md)，结果和原始记录见 [`results/gazebo_campaign_20260830/RESULT_SUMMARY.md`](results/gazebo_campaign_20260830/RESULT_SUMMARY.md)。
+
 ## MyRBF Go2 migration (2026-08-29)
 
 MyRBF v4 is now connected to the Go2 controller through a safe six-axis body-wrench interface. The observer accounts for compensation already applied by the controller, and the requested wrench is distributed across stance feet while checking contact and friction limits. Baseline, ETHRBF, MyRBF v3, and the previous Fy-only interface remain available for reproducible comparisons.

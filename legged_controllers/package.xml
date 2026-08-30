@@ -17,6 +17,9 @@
     <depend>legged_wbc</depend>
 
     <depend>controller_interface</depend>
+    <depend>gazebo_msgs</depend>
+    <depend>geometry_msgs</depend>
+    <depend>ocs2_msgs</depend>
     <depend>ocs2_legged_robot_ros</depend>
     <depend>ocs2_self_collision_visualization</depend>
 

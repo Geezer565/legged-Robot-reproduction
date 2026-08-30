@@ -7,6 +7,7 @@
     <arg name="state_output" default="/tmp/myrbf_go2_state.csv"/>
     <arg name="shadow_output" default="/tmp/myrbf_go2_shadow.csv"/>
     <arg name="wrench_output" default="/tmp/myrbf_go2_wrench.csv"/>
+    <arg name="motion_output" default="/tmp/myrbf_go2_motion.csv"/>
     <arg name="enable_shadow" default="true"/>
     <arg name="enable_control_injection" default="false"/>
     <arg name="control_gain" default="0.1"/>
@@ -19,8 +20,17 @@
     <arg name="wrench_value" default="20.0"/>
     <arg name="wrench_amplitude" default="0.0"/>
     <arg name="wrench_frequency" default="0.5"/>
+    <arg name="wrench_secondary_amplitude" default="0.0"/>
+    <arg name="wrench_secondary_frequency" default="1.0"/>
     <arg name="wrench_delay" default="5.0"/>
     <arg name="wrench_duration" default="5.0"/>
+    <arg name="enable_motion" default="false"/>
+    <arg name="motion_gait" default="static_walk"/>
+    <arg name="motion_vx" default="0.08"/>
+    <arg name="motion_vy" default="0.0"/>
+    <arg name="motion_yaw_rate" default="0.0"/>
+    <arg name="motion_delay" default="4.0"/>
+    <arg name="motion_duration" default="7.0"/>
 
     <param name="/controllers/legged_controller/enable_myrbf_shadow"
            value="$(arg enable_shadow)"/>
@@ -61,5 +71,8 @@
           args="--output $(arg shadow_output) --duration $(arg duration)"/>
     <node if="$(arg enable_wrench)" name="myrbf_wrench_injector"
           pkg="legged_controllers" type="apply_myrbf_wrench.py" output="screen"
-          args="--output $(arg wrench_output) --profile $(arg wrench_profile) --axis $(arg wrench_axis) --value $(arg wrench_value) --amplitude $(arg wrench_amplitude) --frequency $(arg wrench_frequency) --delay $(arg wrench_delay) --duration $(arg wrench_duration)"/>
+          args="--output $(arg wrench_output) --profile $(arg wrench_profile) --axis $(arg wrench_axis) --value $(arg wrench_value) --amplitude $(arg wrench_amplitude) --frequency $(arg wrench_frequency) --secondary-amplitude $(arg wrench_secondary_amplitude) --secondary-frequency $(arg wrench_secondary_frequency) --delay $(arg wrench_delay) --duration $(arg wrench_duration)"/>
+    <node if="$(arg enable_motion)" name="myrbf_motion_publisher"
+          pkg="legged_controllers" type="publish_myrbf_motion.py" output="screen"
+          args="--output $(arg motion_output) --gait $(arg motion_gait) --vx $(arg motion_vx) --vy $(arg motion_vy) --yaw-rate $(arg motion_yaw_rate) --delay $(arg motion_delay) --duration $(arg motion_duration)"/>
 </launch>
