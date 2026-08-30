@@ -1,0 +1,473 @@
+[INFO] [1788078144.344673, 0.000000]: Loading model XML from ros parameter legged_robot_description
+[INFO] [1788078144.368725, 0.000000]: Waiting for service /gazebo/spawn_urdf_model
+[INFO] [1788078144.975753, 0.000000]: Calling service /gazebo/spawn_urdf_model
+[INFO] [1788078145.359423, 0.000000]: Spawn status: SpawnModel: Successfully spawned entity
+[INFO] [1788078145.360739, 0.000000]: Waiting for service /gazebo/set_model_configuration
+[INFO] [1788078145.363511, 0.000000]: temporary hack to **fix** the -J joint position option (issue #93), sleeping for 1 second to avoid race condition.
+[INFO] [1788078146.364280, 0.000000]: Calling service /gazebo/set_model_configuration
+[INFO] [1788078146.368222, 0.000000]: Set model configuration status: SetModelConfiguration: success
+[0m[INFO] [1788078144.590928297]: Finished loading Gazebo ROS API Plugin.[0m
+[0m[INFO] [1788078144.592294067]: waitForService: Service [/gazebo/set_physics_properties] has not been advertised, waiting...[0m
+[0m[INFO] [1788078144.799418857]: waitForService: Service [/gazebo/set_physics_properties] is now available.[0m
+[0m[INFO] [1788078144.825576766]: Physics dynamic reconfigure ready.[0m
+[0m[INFO] [1788078145.379244058]: Loading gazebo_ros_control plugin[0m
+[0m[INFO] [1788078145.379341071]: Starting gazebo_ros_control plugin in namespace: /[0m
+[0m[INFO] [1788078145.380328172]: gazebo_ros_control plugin is waiting for model URDF in parameter [legged_robot_description] on the ROS param server.[0m
+[0m[INFO] [1788078145.493859033]: Loaded gazebo_ros_control.[0m
+[LeggedInterface] Loading task file: "/tmp/myrbf_go2_catkin/src/leggedcontrol_go2/legged_controllers/config/go2/task.info"
+[LeggedInterface] Loading Pinocchio model from: "/tmp/legged_control/go2.urdf"
+[LeggedInterface] Loading target command settings from: "/tmp/myrbf_go2_catkin/src/leggedcontrol_go2/legged_controllers/config/go2/reference.info"
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/dynamics_systemFlowMap/cppad_generated/dynamics_systemFlowMap_lib.so
+WARNING: Loaded at least one default value in matrix: "Q"
+WARNING: Loaded at least one default value in matrix: "R"
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/LF_FOOT_position/cppad_generated/LF_FOOT_position_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/LF_FOOT_velocity/cppad_generated/LF_FOOT_velocity_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/LF_FOOT_orientation/cppad_generated/LF_FOOT_orientation_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/RF_FOOT_position/cppad_generated/RF_FOOT_position_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/RF_FOOT_velocity/cppad_generated/RF_FOOT_velocity_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/RF_FOOT_orientation/cppad_generated/RF_FOOT_orientation_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/LH_FOOT_position/cppad_generated/LH_FOOT_position_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/LH_FOOT_velocity/cppad_generated/LH_FOOT_velocity_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/LH_FOOT_orientation/cppad_generated/LH_FOOT_orientation_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/RH_FOOT_position/cppad_generated/RH_FOOT_position_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/RH_FOOT_velocity/cppad_generated/RH_FOOT_velocity_lib.so
+[CppAdInterface] Loading Shared Library: /tmp/legged_control/go2/RH_FOOT_orientation/cppad_generated/RH_FOOT_orientation_lib.so
+WARNING: Failed to set threads priority (one possible reason could be that the user and the group permissions are not set properly.)
+WARNING: Failed to set threads priority (one possible reason could be that the user and the group permissions are not set properly.)
+WARNING: Failed to set threads priority (one possible reason could be that the user and the group permissions are not set properly.)
+[33m[WARN] [1788078146.518618084]: [MyRBF control] Injection enabled through wrench_allocator; compensation-aware observer=true[0m
+[33m[WARN] [1788078146.524967807]: The root link base has an inertia specified in the URDF, but KDL does not support a root link with an inertia.  As a workaround, you can add an extra dummy link to your URDF.[0m
+[INFO] [1788078146.553336, 0.004000]: Go2 controller is running; Gazebo physics released.
+[0m[INFO] [1788078146.540981756, 0.003000000]: Waiting for the initial policy ...[0m
+[0m[INFO] [1788078146.550320558, 0.003000000]: Initial policy has been received.[0m
+[0m[INFO] [1788078150.608781642, 4.001000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.628960864, 4.020000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.648156598, 4.039000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.668413692, 4.059000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.688288928, 4.078000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.708158305, 4.097000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.728611692, 4.117000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.747974359, 4.137000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.768522585, 4.157000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.788021707, 4.176000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.807915170, 4.196000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.828148745, 4.216000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.848329577, 4.236000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.868956476, 4.257000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.888391404, 4.277000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.908043049, 4.296000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.927950141, 4.315000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.947909795, 4.334000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.968548523, 4.355000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078150.988263592, 4.375000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.008667967, 4.395000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.028611925, 4.415000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.047977893, 4.434000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.068690586, 4.453000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.088905178, 4.473000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.109949033, 4.495000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.129097199, 4.514000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.148180324, 4.532000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.168341584, 4.552000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.188445095, 4.573000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.208287307, 4.592000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.229109565, 4.613000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.247887535, 4.631000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.268614699, 4.652000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.288728336, 4.672000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.308615876, 4.691000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.328433146, 4.710000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.348072293, 4.730000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.368516687, 4.750000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.388395320, 4.770000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.408326975, 4.789000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.428623745, 4.809000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.448277077, 4.828000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.468142546, 4.848000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.488110519, 4.868000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.508167110, 4.886000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.528311507, 4.905000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.548143855, 4.923000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.568709294, 4.944000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.588092316, 4.963000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.608070931, 4.983000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.628251194, 5.003000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.648343756, 5.022000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.668898974, 5.043000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.688046382, 5.062000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.707837589, 5.082000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.727940054, 5.101000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.748159275, 5.122000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.768439301, 5.142000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.788305013, 5.162000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.807952269, 5.181000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.828053001, 5.201000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.848065535, 5.220000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.868296877, 5.240000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.888048935, 5.260000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.908057406, 5.280000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.927969316, 5.300000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.948075070, 5.320000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.968664103, 5.340000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078151.988528524, 5.360000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.009380554, 5.381000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.029606231, 5.400000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.049439434, 5.420000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.068290515, 5.439000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.088192705, 5.457000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.107940461, 5.477000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.127892524, 5.497000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.147970905, 5.516000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.167987897, 5.536000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.188018991, 5.556000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.208010148, 5.576000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.228061367, 5.596000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.247937688, 5.616000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.268643734, 5.636000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.287878109, 5.655000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.307924509, 5.675000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.327859837, 5.695000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.347862047, 5.715000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.368088181, 5.735000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.388369470, 5.755000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.409332845, 5.775000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.428420837, 5.793000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.448531038, 5.813000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.472629043, 5.836000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.488302821, 5.852000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.508643646, 5.873000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.528612176, 5.892000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.548584409, 5.911000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.568346901, 5.931000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.588894559, 5.950000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.608259266, 5.969000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.628432299, 5.989000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.648540057, 6.008000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.668584997, 6.028000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.688607634, 6.048000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.708396648, 6.067000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.727923244, 6.086000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.747998329, 6.106000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.768325162, 6.127000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.787860054, 6.146000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.808042837, 6.165000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.828056709, 6.185000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.847890520, 6.205000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.868026423, 6.225000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.888096073, 6.245000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.908109168, 6.265000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.927940948, 6.284000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.947962825, 6.304000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.968038000, 6.324000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078152.987916964, 6.344000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.007948095, 6.364000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.027923149, 6.384000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.047908084, 6.403000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.068026816, 6.423000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.088042059, 6.443000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.108014516, 6.463000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.128128392, 6.483000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.147938600, 6.503000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.167987535, 6.523000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.188039442, 6.543000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.207883302, 6.563000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.227930982, 6.582000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.248300467, 6.603000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.268857837, 6.623000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.287951373, 6.641000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.308784355, 6.662000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.328221059, 6.681000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.348111098, 6.701000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.369059492, 6.721000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.388799522, 6.741000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.408052868, 6.759000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.428094675, 6.779000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.447977110, 6.799000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.468607189, 6.820000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.488193594, 6.839000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.508093403, 6.859000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.528123548, 6.878000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.548201276, 6.897000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.569432969, 6.918000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.588244599, 6.937000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.607986217, 6.956000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.628366647, 6.976000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.648016477, 6.995000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.668234074, 7.015000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.688114560, 7.035000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.708043984, 7.056000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.727898890, 7.075000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.747883790, 7.093000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.768310058, 7.113000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.788149515, 7.133000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.807878123, 7.153000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.827948133, 7.173000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.847951386, 7.193000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.868458371, 7.213000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.888253093, 7.233000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.908160625, 7.253000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.928123450, 7.273000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.947975882, 7.292000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.968257393, 7.313000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078153.988379410, 7.333000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.008421933, 7.353000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.028259809, 7.372000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.048255251, 7.392000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.068481288, 7.412000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.089088445, 7.432000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.109214869, 7.452000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.128172544, 7.470000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.147952151, 7.489000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.168176740, 7.509000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.188073770, 7.529000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.208042290, 7.548000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.227989112, 7.568000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.247870477, 7.588000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.268013172, 7.608000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.287955775, 7.628000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.307992949, 7.647000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.328178979, 7.668000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.348071227, 7.687000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.367871392, 7.707000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.388034076, 7.727000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.408110290, 7.747000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.427969610, 7.765000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.448067178, 7.785000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.468614769, 7.806000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.488746739, 7.825000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.508173158, 7.844000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.527908780, 7.864000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.548512123, 7.883000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.568114364, 7.902000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.588020876, 7.922000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.608089235, 7.941000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.628231238, 7.959000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.647951086, 7.979000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.668468286, 7.998000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.688479138, 8.017000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.708563223, 8.037000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.728298573, 8.057000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.748938731, 8.077000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.769387275, 8.096000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.788312713, 8.115000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.808086159, 8.135000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.828007879, 8.155000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.847901790, 8.174000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.868758454, 8.194000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.888099132, 8.213000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.908406783, 8.233000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.928241791, 8.253000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.948045793, 8.273000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.968283288, 8.293000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078154.988793701, 8.313000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.008221995, 8.333000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.027915415, 8.352000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.047977893, 8.370000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.069055390, 8.391000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.088131650, 8.410000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.108130853, 8.431000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.127889396, 8.450000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.147887770, 8.470000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.168154155, 8.490000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.188125192, 8.510000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.208143697, 8.530000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.228149870, 8.549000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.247853988, 8.569000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.268066490, 8.589000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.288067310, 8.608000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.308067130, 8.628000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.328020038, 8.647000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.347930512, 8.667000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.368014473, 8.686000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.388053396, 8.706000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.408189537, 8.726000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.427926118, 8.746000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.448557903, 8.766000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.468191621, 8.785000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.487948380, 8.805000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.507843819, 8.824000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.527939959, 8.845000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.548291174, 8.865000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.568101572, 8.883000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.588374458, 8.904000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.608008810, 8.923000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.628066911, 8.944000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.648209930, 8.964000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.668440860, 8.984000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.688400380, 9.003000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.708095336, 9.023000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.727989841, 9.043000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.748292643, 9.062000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.768413453, 9.082000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.788364626, 9.102000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.808823851, 9.122000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.829128856, 9.142000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.848629876, 9.161000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.868426368, 9.181000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.888623933, 9.200000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.908109733, 9.219000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.927848131, 9.239000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.947899928, 9.258000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.968052101, 9.279000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078155.987901206, 9.299000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.009058644, 9.320000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.028087417, 9.339000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.049467494, 9.360000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.067920650, 9.378000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.088030715, 9.397000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.107854512, 9.417000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.127871126, 9.437000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.148135175, 9.457000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.167998077, 9.476000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.188107220, 9.496000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.207983016, 9.515000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.227821168, 9.535000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.248130834, 9.555000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.269513723, 9.577000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.288067964, 9.595000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.307970922, 9.615000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.327950412, 9.634000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.348011639, 9.654000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.368199534, 9.674000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.388130484, 9.694000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.408143795, 9.714000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.427925599, 9.734000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.448281441, 9.754000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.468161733, 9.774000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.488489684, 9.795000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.508220180, 9.814000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.528742926, 9.833000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.548610219, 9.853000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.568810954, 9.873000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relative to inertial frame[0m
+[0m[INFO] [1788078156.588149523, 9.892000000]: ApplyBodyWrench: reference_frame is empty/world/map, using inertial frame, transferring from body relati[INFO] [1788078146.604707, 0.053000]: Gazebo body go2::base is ready; starting wrench schedule.
+[INFO] [1788078157.606554, 10.887000]: Finished MyRBF multisine wrench profile; truth written to /tmp/go2_method_compare_20260830/C1_multisine_fy_tuned/wrench.csv
+[INFO] [1788078158.491612, 11.753000]: Wrote 1414 MyRBF shadow samples to /tmp/go2_method_compare_20260830/C1_multisine_fy_tuned/shadow.csv
+ve to inertial frame[0m
+########################################################################
+### MPC Benchmarking
+###   Maximum : 9.96315[ms].
+###   Average : 3.92072[ms].
+########################################################################
+### WBC Benchmarking
+###   Maximum : 2.20707[ms].
+###   Average : 0.254568[ms].
+########################################################################
+The benchmarking is computed over 1253 iterations. 
+SQP Benchmarking	   :	Average time [ms]   (% of total runtime)
+	LQ Approximation   :	2.52473 [ms] 		(66.0438%)
+	Solve QP           :	0.797738 [ms] 		(20.8678%)
+	Linesearch         :	0.463816 [ms] 		(12.1329%)
+	Compute Controller :	0.0365277 [ms] 		(0.95552%)
+
+[SqpSolver] Log written to '/tmp/ocs2/sqp_log/log_Sun_Aug_30_08:22:39_2026.txt'
+[0m[INFO] [1788078143.607996990]: The TargetTrajectories is publishing on legged_robot_mpc_target topic.[0m
+[31m================================================================================REQUIRED process [myrbf_state_recorder-7] has died!
+process has finished cleanly
+log file: /root/.ros/log/eca8a5dc-a44b-11f1-92e7-2a40829c226b/myrbf_state_recorder-7*.log
+Initiating shutdown!
+================================================================================[0m
+... logging to /root/.ros/log/eca8a5dc-a44b-11f1-92e7-2a40829c226b/roslaunch-f3da299bc7b3-7030.log
+Checking log directory for disk usage. This may take a while.
+Press Ctrl-C to interrupt
+Done checking log file disk usage. Usage is <1GB.
+]2;/tmp/myrbf_go2_catkin/src/leggedcontrol_go2/legged_controllers/launch/myrbf_shadow_gazebo.launch
+[1mstarted roslaunch server http://f3da299bc7b3:39081/[0m
+
+SUMMARY
+========
+
+CLEAR PARAMETERS
+ * /spawn_urdf/
+
+PARAMETERS
+ * /controllers/joint_state_controller/publish_rate: 100
+ * /controllers/joint_state_controller/type: joint_state_contr...
+ * /controllers/legged_cheater_controller/type: legged/LeggedChea...
+ * /controllers/legged_controller/enable_myrbf_control_injection: True
+ * /controllers/legged_controller/enable_myrbf_shadow: True
+ * /controllers/legged_controller/myrbf_shadow/allocator_damping: 1e-05
+ * /controllers/legged_controller/myrbf_shadow/allocator_friction_coefficient: 0.5
+ * /controllers/legged_controller/myrbf_shadow/allocator_maximum_force_delta: 15.0
+ * /controllers/legged_controller/myrbf_shadow/allocator_minimum_normal_force: 2.0
+ * /controllers/legged_controller/myrbf_shadow/angular_extent: 4.0
+ * /controllers/legged_controller/myrbf_shadow/compensation_aware_observer: True
+ * /controllers/legged_controller/myrbf_shadow/control_force_limit: 3.0
+ * /controllers/legged_controller/myrbf_shadow/control_gain: 0.1
+ * /controllers/legged_controller/myrbf_shadow/control_gain_vector: [0.25, 0.75, 0.5,...
+ * /controllers/legged_controller/myrbf_shadow/control_interface: wrench_allocator
+ * /controllers/legged_controller/myrbf_shadow/control_magnitude_limit: [8.0, 8.0, 15.0, ...
+ * /controllers/legged_controller/myrbf_shadow/control_rate_limit: 5.0
+ * /controllers/legged_controller/myrbf_shadow/control_rate_limit_vector: [20.0, 20.0, 30.0...
+ * /controllers/legged_controller/myrbf_shadow/discrepancy_scale: [18.4014768931801...
+ * /controllers/legged_controller/myrbf_shadow/filter_alpha: 0.5
+ * /controllers/legged_controller/myrbf_shadow/lambda_angular: 1.5
+ * /controllers/legged_controller/myrbf_shadow/lambda_linear: 2.0
+ * /controllers/legged_controller/myrbf_shadow/leakage: [0.02, 0.02, 0.02...
+ * /controllers/legged_controller/myrbf_shadow/linear_extent: 2.0
+ * /controllers/legged_controller/myrbf_shadow/output_scale: [18.4014768931801...
+ * /controllers/legged_controller/myrbf_shadow/prediction_gain: [0.00100409, 0.05...
+ * /controllers/legged_controller/myrbf_shadow/residual_scale: [18.4014768931801...
+ * /controllers/legged_controller/myrbf_shadow/time_tolerance: 0.003
+ * /controllers/legged_controller/myrbf_shadow/tracking_gain: [0.0, 0.0, 0.0, 0...
+ * /controllers/legged_controller/myrbf_shadow/update_period: 0.01
+ * /controllers/legged_controller/myrbf_shadow/width_ratio: 0.85
+ * /controllers/legged_controller/type: legged/LeggedCont...
+ * /gaitCommandFile: /tmp/myrbf_go2_ca...
+ * /gazebo/contacts: ['LF_FOOT', 'LH_F...
+ * /gazebo/delay: 0.009
+ * /gazebo/enable_ros_network: True
+ * /gazebo/imus/unitree_imu/angular_velocity_covariance: [0.0004, 0.0004, ...
+ * /gazebo/imus/unitree_imu/frame_id: unitree_imu
+ * /gazebo/imus/unitree_imu/linear_acceleration_covariance: [0.01, 0.01, 0.01]
+ * /gazebo/imus/unitree_imu/orientation_covariance_diagonal: [0.0012, 0.0012, ...
+ * /legged_robot_description: <?xml version="1....
+ * /referenceFile: /tmp/myrbf_go2_ca...
+ * /rosdistro: noetic
+ * /rosversion: 1.17.4
+ * /taskFile: /tmp/myrbf_go2_ca...
+ * /urdfFile: /tmp/legged_contr...
+ * /use_sim_time: True
+
+NODES
+  /
+    gazebo (gazebo_ros/gzserver)
+    generate_urdf (legged_common/generate_urdf.sh)
+    legged_robot_target (legged_controllers/legged_target_trajectories_publisher)
+    myrbf_shadow_recorder (legged_controllers/record_myrbf_shadow.py)
+    myrbf_state_recorder (legged_controllers/record_stage8c.py)
+    myrbf_unpause_when_controller_ready (legged_controllers/unpause_when_controller_ready.py)
+    myrbf_wrench_injector (legged_controllers/apply_myrbf_wrench.py)
+    spawn_urdf (gazebo_ros/spawn_model)
+
+auto-starting new master
+[1mprocess[master]: started with pid [7132][0m
+[1mROS_MASTER_URI=http://localhost:11311[0m
+]2;/tmp/myrbf_go2_catkin/src/leggedcontrol_go2/legged_controllers/launch/myrbf_shadow_gazebo.launch http://localhost:11311
+[1msetting /run_id to eca8a5dc-a44b-11f1-92e7-2a40829c226b[0m
+[1mprocess[rosout-1]: started with pid [7188][0m
+started core service [/rosout]
+[1mprocess[generate_urdf-2]: started with pid [7196][0m
+[1mprocess[gazebo-3]: started with pid [7198][0m
+[1mprocess[spawn_urdf-4]: started with pid [7204][0m
+[1mprocess[legged_robot_target-5]: started with pid [7207][0m
+[1mprocess[myrbf_unpause_when_controller_ready-6]: started with pid [7208][0m
+[1mprocess[myrbf_state_recorder-7]: started with pid [7209][0m
+[1mprocess[myrbf_shadow_recorder-8]: started with pid [7214][0m
+[1mprocess[myrbf_wrench_injector-9]: started with pid [7217][0m
+[1m[generate_urdf-2] process has finished cleanly
+log file: /root/.ros/log/eca8a5dc-a44b-11f1-92e7-2a40829c226b/generate_urdf-2*.log[0m
+[1m[spawn_urdf-4] process has finished cleanly
+log file: /root/.ros/log/eca8a5dc-a44b-11f1-92e7-2a40829c226b/spawn_urdf-4*.log[0m
+[1m[myrbf_unpause_when_controller_ready-6] process has finished cleanly
+log file: /root/.ros/log/eca8a5dc-a44b-11f1-92e7-2a40829c226b/myrbf_unpause_when_controller_ready-6*.log[0m
+[1m[myrbf_wrench_injector-9] process has finished cleanly
+log file: /root/.ros/log/eca8a5dc-a44b-11f1-92e7-2a40829c226b/myrbf_wrench_injector-9*.log[0m
+[myrbf_shadow_recorder-8] killing on exit
+[myrbf_state_recorder-7] killing on exit
+[legged_robot_target-5] killing on exit
+[gazebo-3] killing on exit
+[rosout-1] killing on exit
+[master] killing on exit
+shutting down processing monitor...
+... shutting down processing monitor complete
+[1mdone[0m

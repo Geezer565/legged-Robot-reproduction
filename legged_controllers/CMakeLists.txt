@@ -90,6 +90,7 @@ target_compile_options(legged_target_trajectories_publisher PRIVATE ${OCS2_CXX_F
 
 catkin_install_python(PROGRAMS
         scripts/analyze_myrbf_v4_interface.py
+        scripts/analyze_myrbf_campaign.py
         scripts/apply_myrbf_wrench.py
         scripts/publish_myrbf_motion.py
         scripts/record_myrbf_shadow.py
@@ -102,6 +103,7 @@ if (CATKIN_ENABLE_TESTING)
     catkin_add_nosetests(test/test_myrbf_shadow_recording.py)
     catkin_add_nosetests(test/test_myrbf_wrench_profile.py)
     catkin_add_nosetests(test/test_myrbf_motion_profile.py)
+    catkin_add_nosetests(test/test_myrbf_campaign_analysis.py)
 endif ()
 
 #########################
