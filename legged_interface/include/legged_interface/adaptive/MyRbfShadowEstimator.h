@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <limits>
+
 #include "legged_interface/adaptive/AdaptiveTypes.h"
 
 namespace legged {
@@ -16,6 +19,12 @@ struct MyRbfShadowSettings {
   vector6_t trackingGain = vector6_t::Zero();
   vector6_t predictionGain = vector6_t::Zero();
   vector6_t leakage = vector6_t::Zero();
+  bool normalizeUpdate = false;
+  bool trackingBiasOnly = false;
+  scalar_t updateEpsilon = 1e-9;
+  scalar_t minimumCoverage = 0.0;
+  vector6_t weightLimit = vector6_t::Constant(
+      std::numeric_limits<scalar_t>::infinity());
 };
 
 struct MyRbfShadowStepResult {
@@ -25,6 +34,8 @@ struct MyRbfShadowStepResult {
   matrix_t basis;
   vector6_t estimateBeforeUpdate = vector6_t::Zero();
   vector6_t estimateAfterUpdate = vector6_t::Zero();
+  vector6_t coverage = vector6_t::Zero();
+  std::array<bool, 6> updateFrozen{};
   matrix_t weightDerivative;
   matrix_t weightsAfterUpdate;
 };
@@ -53,7 +64,8 @@ class MyRbfShadowEstimator final {
   explicit MyRbfShadowEstimator(MyRbfShadowSettings settings);
 
   MyRbfShadowStepResult step(const vector6_t& residualFiltered,
-                             const vector6_t& sigma, scalar_t dt);
+                             const vector6_t& sigma, scalar_t dt,
+                             scalar_t updateGate = 1.0);
 
   const vector6_t& estimate() const { return previousEstimate_; }
   const matrix_t& weights() const { return weights_; }

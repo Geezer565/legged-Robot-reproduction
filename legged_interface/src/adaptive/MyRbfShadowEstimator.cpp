@@ -91,6 +91,24 @@ void MyRbfShadowEstimator::validateSettings() const {
   requireNonnegativeFinite(settings_.predictionGain, "predictionGain");
   requireNonnegativeFinite(settings_.leakage, "leakage");
 
+  if (!std::isfinite(settings_.updateEpsilon) ||
+      settings_.updateEpsilon <= 0.0) {
+    throw std::invalid_argument(
+        "[MyRbfShadowEstimator] updateEpsilon must be finite and positive.");
+  }
+  if (!std::isfinite(settings_.minimumCoverage) ||
+      settings_.minimumCoverage < 0.0 || settings_.minimumCoverage > 1.0) {
+    throw std::invalid_argument(
+        "[MyRbfShadowEstimator] minimumCoverage must be in [0, 1].");
+  }
+  for (Eigen::Index axis = 0; axis < kAxisCount; ++axis) {
+    const scalar_t limit = settings_.weightLimit(axis);
+    if (std::isnan(limit) || limit <= 0.0) {
+      throw std::invalid_argument(
+          "[MyRbfShadowEstimator] weightLimit must be positive or infinity.");
+    }
+  }
+
   if (settings_.centers.rows() != kAxisCount ||
       settings_.centers.cols() != kInputDimension * kGaussianNodeCount ||
       !settings_.centers.allFinite()) {
@@ -144,7 +162,8 @@ vector6_t MyRbfShadowEstimator::evaluate(const matrix_t& basis) const {
 }
 
 MyRbfShadowStepResult MyRbfShadowEstimator::step(
-    const vector6_t& residualFiltered, const vector6_t& sigma, scalar_t dt) {
+    const vector6_t& residualFiltered, const vector6_t& sigma, scalar_t dt,
+    scalar_t updateGate) {
   if (!residualFiltered.allFinite() || !sigma.allFinite()) {
     throw std::invalid_argument(
         "[MyRbfShadowEstimator] residual and sigma must be finite.");
@@ -152,6 +171,10 @@ MyRbfShadowStepResult MyRbfShadowEstimator::step(
   if (!std::isfinite(dt) || dt < 0.0) {
     throw std::invalid_argument(
         "[MyRbfShadowEstimator] dt must be finite and nonnegative.");
+  }
+  if (!std::isfinite(updateGate) || updateGate < 0.0 || updateGate > 1.0) {
+    throw std::invalid_argument(
+        "[MyRbfShadowEstimator] updateGate must be finite and in [0, 1].");
   }
 
   MyRbfShadowStepResult result;
@@ -165,10 +188,41 @@ MyRbfShadowStepResult MyRbfShadowEstimator::step(
   for (Eigen::Index axis = 0; axis < kAxisCount; ++axis) {
     const vector_t physicalGradient =
         settings_.outputScale(axis) * result.basis.col(axis);
-    result.weightDerivative.col(axis) =
-        settings_.trackingGain(axis) * sigma(axis) * physicalGradient +
-        settings_.predictionGain(axis) * predictionError(axis) *
-            physicalGradient -
+    result.coverage(axis) = result.basis
+                                .block(1, axis, kGaussianNodeCount, 1)
+                                .maxCoeff();
+    const bool learningEnabled =
+        updateGate > 0.0 && result.coverage(axis) >= settings_.minimumCoverage;
+    result.updateFrozen[static_cast<std::size_t>(axis)] = !learningEnabled;
+
+    if (learningEnabled) {
+      vector_t updateGradient = physicalGradient;
+      if (settings_.normalizeUpdate) {
+        updateGradient /=
+            settings_.updateEpsilon + physicalGradient.squaredNorm();
+      }
+
+      if (settings_.trackingBiasOnly) {
+        scalar_t biasGradient = settings_.outputScale(axis);
+        if (settings_.normalizeUpdate) {
+          biasGradient /= settings_.updateEpsilon +
+                          settings_.outputScale(axis) *
+                              settings_.outputScale(axis);
+        }
+        result.weightDerivative(0, axis) +=
+            updateGate * settings_.trackingGain(axis) * sigma(axis) *
+            biasGradient;
+      } else {
+        result.weightDerivative.col(axis) +=
+            updateGate * settings_.trackingGain(axis) * sigma(axis) *
+            updateGradient;
+      }
+
+      result.weightDerivative.col(axis) +=
+          updateGate * settings_.predictionGain(axis) * predictionError(axis) *
+          updateGradient;
+    }
+    result.weightDerivative.col(axis) -=
         settings_.leakage(axis) * weights_.col(axis);
   }
 
@@ -176,6 +230,13 @@ MyRbfShadowStepResult MyRbfShadowEstimator::step(
   if (!result.weightsAfterUpdate.allFinite()) {
     throw std::overflow_error(
         "[MyRbfShadowEstimator] update produced non-finite weights.");
+  }
+  for (Eigen::Index axis = 0; axis < kAxisCount; ++axis) {
+    const scalar_t limit = settings_.weightLimit(axis);
+    if (std::isfinite(limit)) {
+      result.weightsAfterUpdate.col(axis) =
+          result.weightsAfterUpdate.col(axis).cwiseMax(-limit).cwiseMin(limit);
+    }
   }
   weights_ = result.weightsAfterUpdate;
   result.estimateAfterUpdate = evaluate(result.basis);
