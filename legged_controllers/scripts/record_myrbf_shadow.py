@@ -43,6 +43,11 @@ def field_names():
     fields.extend(f"requested_control_{axis}" for axis in AXES)
     fields.extend(f"achieved_control_{axis}" for axis in AXES)
     fields.extend(("allocator_scale", "control_interface_mode"))
+    fields.extend(
+        f"coverage_{axis[:-2] if axis.endswith('_n') else axis[:-3]}"
+        for axis in AXES
+    )
+    fields.append("update_frozen")
     return fields
 
 

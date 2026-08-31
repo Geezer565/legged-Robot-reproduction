@@ -83,10 +83,20 @@ bool LeggedController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHand
     scalar_t linearExtent = 2.0;
     scalar_t angularExtent = 4.0;
     scalar_t widthRatio = 0.85;
+    bool normalizeUpdate = false;
+    bool trackingBiasOnly = false;
+    scalar_t updateEpsilon = 1e-9;
+    scalar_t minimumCoverage = 0.0;
     controller_nh.param("myrbf_shadow/filter_alpha", filterAlpha, 0.5);
     controller_nh.param("myrbf_shadow/linear_extent", linearExtent, 2.0);
     controller_nh.param("myrbf_shadow/angular_extent", angularExtent, 4.0);
     controller_nh.param("myrbf_shadow/width_ratio", widthRatio, 0.85);
+    controller_nh.param("myrbf_shadow/normalize_update", normalizeUpdate,
+                        false);
+    controller_nh.param("myrbf_shadow/tracking_bias_only", trackingBiasOnly,
+                        false);
+    controller_nh.param("myrbf_shadow/update_epsilon", updateEpsilon, 1e-9);
+    controller_nh.param("myrbf_shadow/minimum_coverage", minimumCoverage, 0.0);
     controller_nh.param(
         "myrbf_shadow/lambda_linear", myRbfShadowLambdaLinear_, 2.0);
     controller_nh.param(
@@ -134,6 +144,10 @@ bool LeggedController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHand
     const auto leakage = loadMyRbfVector6(
         controller_nh, "myrbf_shadow/leakage",
         adaptive::vector6_t::Constant(0.02));
+    const auto weightLimit = loadMyRbfVector6(
+        controller_nh, "myrbf_shadow/weight_limit",
+        adaptive::vector6_t::Constant(
+            std::numeric_limits<scalar_t>::infinity()));
     myRbfControlGainVector_ = loadMyRbfVector6(
         controller_nh, "myrbf_shadow/control_gain_vector",
         adaptive::vector6_t::Constant(0.1));
@@ -195,6 +209,11 @@ bool LeggedController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHand
           linearExtent, angularExtent, widthRatio,
           residualScale, discrepancyScale, outputScale,
           trackingGain, predictionGain, leakage);
+      settings.normalizeUpdate = normalizeUpdate;
+      settings.trackingBiasOnly = trackingBiasOnly;
+      settings.updateEpsilon = updateEpsilon;
+      settings.minimumCoverage = minimumCoverage;
+      settings.weightLimit = weightLimit;
       const auto& modelInfo = leggedInterface_->getCentroidalModelInfo();
       myRbfShadowPipeline_ = std::make_unique<adaptive::MyRbfShadowPipeline>(
           modelInfo.robotMass, modelInfo.stateDim, true,
@@ -218,7 +237,7 @@ bool LeggedController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHand
     myRbfShadowPublisher_ = std::make_unique<
         realtime_tools::RealtimePublisher<std_msgs::Float64MultiArray>>(
         shadowNodeHandle, "/myrbf_shadow_diagnostics", 100);
-    myRbfShadowPublisher_->msg_.data.resize(80, 0.0);
+    myRbfShadowPublisher_->msg_.data.resize(87, 0.0);
     if (enableMyRbfControlInjection_) {
       ROS_WARN_STREAM("[MyRBF control] Injection enabled through "
                       << myRbfControlInterface_
@@ -602,6 +621,13 @@ void LeggedController::publishMyRbfShadowDiagnostics(
   }
   values[index++] = myRbfAllocatorScale_;
   values[index++] = myRbfControlInterface_ == "wrench_allocator" ? 2.0 : 1.0;
+  bool updateFrozen = false;
+  for (Eigen::Index axis = 0; axis < 6; ++axis) {
+    values[index++] = result.estimator.coverage(axis);
+    updateFrozen = updateFrozen ||
+        result.estimator.updateFrozen[static_cast<std::size_t>(axis)];
+  }
+  values[index++] = updateFrozen ? 1.0 : 0.0;
   myRbfShadowPublisher_->unlockAndPublish();
 }
 

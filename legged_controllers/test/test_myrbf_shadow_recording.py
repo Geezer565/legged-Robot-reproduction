@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import importlib.util
+import math
 from pathlib import Path
 import unittest
 
@@ -13,7 +14,7 @@ SPEC.loader.exec_module(MODULE)
 
 class MyRbfShadowRecordingTest(unittest.TestCase):
     def test_decodes_fixed_diagnostic_layout(self):
-        values = [float(index) for index in range(80)]
+        values = [float(index) for index in range(87)]
 
         row = MODULE.decode_diagnostic(values)
 
@@ -35,10 +36,15 @@ class MyRbfShadowRecordingTest(unittest.TestCase):
         self.assertEqual(row["achieved_control_fy_n"], 73.0)
         self.assertEqual(row["allocator_scale"], 78.0)
         self.assertEqual(row["control_interface_mode"], 79.0)
+        self.assertEqual(row["coverage_fx"], 80.0)
+        self.assertEqual(row["coverage_tz"], 85.0)
+        self.assertEqual(row["update_frozen"], 86.0)
+        self.assertEqual(tuple(row), MODULE.FIELDS)
+        self.assertTrue(all(math.isfinite(value) for value in row.values()))
 
     def test_rejects_truncated_diagnostic_message(self):
         with self.assertRaises(ValueError):
-            MODULE.decode_diagnostic([0.0] * 79)
+            MODULE.decode_diagnostic([0.0] * 86)
 
 
 if __name__ == "__main__":
