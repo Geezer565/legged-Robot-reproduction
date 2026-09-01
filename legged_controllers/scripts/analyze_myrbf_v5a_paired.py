@@ -327,6 +327,16 @@ def _validate_strictly_increasing(rows, field, label):
         raise ValueError("%s must be strictly increasing" % label)
 
 
+def _validate_stream_continuity(rows, field, label):
+    if len(rows) < 3:
+        raise ValueError("%s has too few usable samples" % label)
+    differences = [right[field] - left[field]
+                   for left, right in zip(rows, rows[1:])]
+    period = float(np.median(np.asarray(differences, dtype=float)))
+    if max(differences) > MAX_SAMPLE_GAP_FACTOR * period + 1e-12:
+        raise ValueError("%s has an excessive gap" % label)
+
+
 def _validate_schedule_coverage(rows, start, stop, label):
     wall_times = [row["wall_elapsed"] for row in rows]
     if len(wall_times) < 3:
@@ -427,18 +437,22 @@ def _validate_zero_wrench(wrench):
 
 
 def _relative_values(time, values, onset, stop, unwrap=False):
-    selected = [
-        (float(sample_time), float(value))
-        for sample_time, value in zip(time, values)
-        if onset <= float(sample_time) <= stop
-    ]
-    if not selected:
-        raise ValueError("motion window has no usable samples")
-    selected_times = [item[0] for item in selected]
-    selected_values = np.asarray([item[1] for item in selected], dtype=float)
+    all_times = np.asarray(time, dtype=float)
+    all_values = np.asarray(values, dtype=float)
+    if (not len(all_times) or onset < all_times[0] - 1e-12 or
+            onset > all_times[-1] + 1e-12):
+        raise ValueError("motion baseline lacks source coverage")
     if unwrap:
-        selected_values = np.unwrap(selected_values)
-    selected_values = selected_values - selected_values[0]
+        all_values = np.unwrap(all_values)
+    baseline = float(np.interp(onset, all_times, all_values))
+    selected_indices = [
+        index for index, sample_time in enumerate(all_times)
+        if onset <= sample_time <= stop
+    ]
+    if not selected_indices:
+        raise ValueError("motion window has no usable samples")
+    selected_times = [float(all_times[index]) for index in selected_indices]
+    selected_values = all_values[selected_indices] - baseline
     return selected_times, selected_values.tolist()
 
 
@@ -479,6 +493,8 @@ def analyze_run(run, root):
     )
     _validate_strictly_increasing(shadow, "time_s", "controller times")
     _validate_strictly_increasing(state, "ros_time", "state times")
+    _validate_stream_continuity(shadow, "time_s", "controller times")
+    _validate_stream_continuity(state, "ros_time", "state times")
     motion = _read_csv(
         directory / "motion.csv",
         campaign_schema.REQUIRED_CSV_FIELDS["motion.csv"],
@@ -505,6 +521,7 @@ def analyze_run(run, root):
     if stop <= onset:
         raise ValueError("analysis window has nonpositive duration")
 
+    all_shadow_times = [row["time_s"] for row in shadow]
     active_shadow = [row for row in shadow
                      if onset <= row["time_s"] <= stop]
     if len(active_shadow) < 2:
@@ -526,14 +543,14 @@ def analyze_run(run, root):
         shadow_times, external, estimate, requested, achieved)
 
     _, lateral = _relative_values(
-        shadow_times,
-        [row["actual_base_y_m"] for row in active_shadow],
+        all_shadow_times,
+        [row["actual_base_y_m"] for row in shadow],
         onset,
         stop,
     )
     _, roll_rad = _relative_values(
-        shadow_times,
-        [row["actual_base_roll_rad"] for row in active_shadow],
+        all_shadow_times,
+        [row["actual_base_roll_rad"] for row in shadow],
         onset,
         stop,
         unwrap=True,
@@ -547,7 +564,6 @@ def analyze_run(run, root):
         for row in active_shadow
     ]
     recovery_time = stop + 2.0
-    all_shadow_times = [row["time_s"] for row in shadow]
     if recovery_time > all_shadow_times[-1] + 1e-12:
         raise ValueError("controller CSV does not cover two-second recovery")
     onset_y = _nearest_values(

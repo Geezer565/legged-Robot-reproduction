@@ -996,6 +996,83 @@ class CampaignValidationTest(unittest.TestCase):
         self.assertAlmostEqual(metrics["roll_max_deg"],
                                1.32842024810467, places=12)
 
+    # Production mutation caught: dropping the controller sample before onset
+    # and using the first post-onset lateral/roll values as a zero baseline.
+    def test_analyze_run_interpolates_exact_onset_motion_baseline(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "sine_fy")
+            for filename in ("motion.csv", "wrench.csv"):
+                path = root / run["run_id"] / filename
+                rows = read_csv(path)
+                for row in rows:
+                    row["ros_time"] = "%.3f" % (
+                        float(row["ros_time"]) + 0.125)
+                write_csv(path, tuple(rows[0]), rows)
+
+            path = root / run["run_id"] / "shadow.csv"
+            rows = read_csv(path)
+            for row in rows:
+                if float(row["time_s"]) <= 106.0:
+                    row["actual_base_y_m"] = "2.0"
+                    row["actual_base_roll_rad"] = "3.13"
+                else:
+                    row["actual_base_y_m"] = "2.04"
+                    row["actual_base_roll_rad"] = "-3.13"
+            write_csv(path, tuple(rows[0]), rows)
+
+            metrics = module.analyze_run(run, root)
+
+        self.assertAlmostEqual(metrics["analysis_onset_s"], 106.125)
+        self.assertAlmostEqual(metrics["lateral_rms_m"], 0.02, places=12)
+        self.assertAlmostEqual(metrics["lateral_max_m"], 0.02, places=12)
+        self.assertAlmostEqual(metrics["roll_rms_deg"],
+                               0.6642101240523348, places=12)
+        self.assertAlmostEqual(metrics["roll_max_deg"],
+                               0.6642101240523348, places=12)
+
+    # Production mutation caught: checking only controller first/last coverage
+    # and accepting a missing interior block before computing all metrics.
+    def test_analyze_run_rejects_interior_controller_gap(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "shadow.csv"
+            rows = read_csv(path)
+            rows = [row for row in rows
+                    if not 108.0 <= float(row["time_s"]) < 110.5]
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError,
+                                        "controller times.*excessive gap"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: computing minimum height from state evidence
+    # whose first/last timestamps cover the window but omit an interior block.
+    def test_analyze_run_rejects_interior_usable_state_gap(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "state.csv"
+            rows = read_csv(path)
+            rows = [row for row in rows
+                    if row["base_z"] == "nan"
+                    or not 108.0 <= float(row["ros_time"]) < 110.5]
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError,
+                                        "state times.*excessive gap"):
+                module.analyze_run(run, root)
+
 
 def paired_metric_run(method, repeat, lateral_rms):
     values = {
