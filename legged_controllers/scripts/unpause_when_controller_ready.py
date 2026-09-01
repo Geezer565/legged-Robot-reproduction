@@ -107,7 +107,7 @@ def main():
         diagnostic_readiness=diagnostic_readiness,
         publish_start=lambda value: campaign_start_publisher.publish(Float64(value)),
         ros_now=rospy.get_time,
-        sleep=rospy.sleep,
+        sleep=time.sleep,
         is_shutdown=rospy.is_shutdown,
         timeout_s=30.0,
         monotonic_now=time.monotonic,

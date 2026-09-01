@@ -207,6 +207,76 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
 
         self.assertEqual(published, [])
 
+    # Production mutation caught: wiring rospy.sleep into the actual main
+    # readiness poll can block forever when /clock is frozen, preventing the
+    # monotonic wall deadline from being checked again.
+    def test_unpause_main_uses_wall_sleep_to_reach_frozen_ros_timeout(self):
+        unpause = load_script("unpause_when_controller_ready")
+        published = []
+        diagnostic_callback = []
+
+        class LatchedPublisher:
+            def publish(self, message):
+                published.append(message.data)
+
+        def service_proxy(name, _service_type):
+            if name == "/controller_manager/list_controllers":
+                return lambda: SimpleNamespace(controller=[
+                    SimpleNamespace(
+                        name="controllers/legged_controller",
+                        state="running",
+                    ),
+                ])
+            if name == "/controller_manager/load_controller":
+                return lambda _controller: SimpleNamespace(ok=True)
+            if name == "/controller_manager/switch_controller":
+                return lambda _request: SimpleNamespace(ok=True)
+            if name == "/gazebo/get_joint_properties":
+                return lambda joint: SimpleNamespace(
+                    success=True,
+                    position=[0.72 if joint.endswith("LF_HFE") else -1.44],
+                )
+            if name == "/gazebo/unpause_physics":
+                return lambda: SimpleNamespace()
+            raise AssertionError("unexpected service: %s" % name)
+
+        def subscribe(_topic, _message_type, callback, queue_size):
+            self.assertEqual(queue_size, 1)
+            diagnostic_callback.append(callback)
+            return SimpleNamespace()
+
+        def wall_sleep(_seconds):
+            diagnostic_callback[0](SimpleNamespace(data=[]))
+
+        ros_sleep = mock.Mock(
+            side_effect=AssertionError("ROS-time sleep is forbidden"))
+        monotonic_values = iter((0.0, 0.0, 0.0, 0.0, 10.0, 20.0, 30.0))
+
+        with mock.patch.multiple(
+                unpause.rospy,
+                init_node=mock.DEFAULT,
+                wait_for_service=mock.DEFAULT,
+                ServiceProxy=mock.Mock(side_effect=service_proxy),
+                Publisher=mock.Mock(return_value=LatchedPublisher()),
+                Subscriber=mock.Mock(side_effect=subscribe),
+                is_shutdown=mock.Mock(return_value=False),
+                get_time=mock.Mock(return_value=100.0),
+                sleep=ros_sleep,
+                logwarn=mock.DEFAULT,
+                loginfo=mock.DEFAULT,
+                spin=mock.DEFAULT,
+        ), mock.patch.object(
+                unpause.time, "monotonic", side_effect=monotonic_values
+        ), mock.patch.object(
+                unpause.time, "sleep", side_effect=wall_sleep
+        ) as wall_sleep_mock:
+            with self.assertRaisesRegex(RuntimeError, "diagnostic readiness"):
+                unpause.main()
+
+        self.assertEqual(published, [])
+        self.assertEqual(wall_sleep_mock.call_count, 3)
+        ros_sleep.assert_not_called()
+
     # Production mutation caught: continuing the wait loop after success can
     # publish more than one campaign origin to the shared latched topic.
     def test_controller_and_diagnostics_publish_exactly_once(self):
@@ -296,6 +366,8 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
             diagnostic_callback[0](SimpleNamespace(data=[]))
             ros_clock["now"] += 0.01
 
+        ros_sleep = mock.Mock(
+            side_effect=AssertionError("ROS-time sleep is forbidden"))
         with mock.patch.multiple(
                 unpause.rospy,
                 init_node=mock.DEFAULT,
@@ -305,15 +377,20 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
                 Subscriber=mock.Mock(side_effect=subscribe),
                 is_shutdown=mock.Mock(return_value=False),
                 get_time=mock.Mock(side_effect=lambda: ros_clock["now"]),
-                sleep=mock.Mock(side_effect=advance_diagnostics),
+                sleep=ros_sleep,
                 loginfo=mock.DEFAULT,
                 spin=mock.Mock(side_effect=spin_until_late_subscriber_connects),
-        ), mock.patch.object(unpause.time, "monotonic", return_value=0.0):
+        ), mock.patch.object(
+                unpause.time, "monotonic", return_value=0.0
+        ), mock.patch.object(
+                unpause.time, "sleep", side_effect=advance_diagnostics
+        ):
             unpause.main()
 
         self.assertEqual(len(published), 1)
         self.assertAlmostEqual(published[0], 20.51)
         self.assertEqual(late_received, published)
+        ros_sleep.assert_not_called()
 
     # Production mutation caught: accepting diagnostics before controller
     # running lets an already-ready startup burst satisfy the start gate.
