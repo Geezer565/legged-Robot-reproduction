@@ -236,6 +236,9 @@ class CampaignSchemaTest(unittest.TestCase):
                     "motion_delay_s": 4.0,
                     "motion_duration_s": 9.0,
                     "vx_mps": 0.08,
+                    "vy_mps": 0.0,
+                    "yaw_rate_rps": 0.0,
+                    "wrench_required": False,
                     "force_axis": "fy",
                     "force_profile": "none",
                     "force_value_n": 0.0,
@@ -250,6 +253,9 @@ class CampaignSchemaTest(unittest.TestCase):
                     "motion_delay_s": 4.0,
                     "motion_duration_s": 9.0,
                     "vx_mps": 0.08,
+                    "vy_mps": 0.0,
+                    "yaw_rate_rps": 0.0,
+                    "wrench_required": True,
                     "force_axis": "fy",
                     "force_profile": "constant",
                     "force_value_n": 20.0,
@@ -264,6 +270,9 @@ class CampaignSchemaTest(unittest.TestCase):
                     "motion_delay_s": 4.0,
                     "motion_duration_s": 9.0,
                     "vx_mps": 0.08,
+                    "vy_mps": 0.0,
+                    "yaw_rate_rps": 0.0,
+                    "wrench_required": True,
                     "force_axis": "fy",
                     "force_profile": "sine",
                     "force_value_n": 0.0,
@@ -399,23 +408,43 @@ class ForceResponseMetricsTest(unittest.TestCase):
 
 class CampaignValidationTest(unittest.TestCase):
     # Production mutation caught: rejecting valid retained extra columns or
-    # treating leading startup nan state rows as usable estimator samples.
-    def test_complete_campaign_and_startup_rows_are_accepted(self):
+    # a present zero-force no-disturbance file, or treating leading startup nan
+    # state rows as usable estimator samples.
+    def test_present_zero_no_disturbance_wrench_and_startup_rows_are_accepted(self):
         module = load_analyzer()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             manifest = build_complete_campaign(root)
+            self.assertTrue((root / manifest["runs"][0]["run_id"] /
+                             "wrench.csv").is_file())
 
             module.validate_campaign(manifest, root)
             metrics = module.analyze_run(manifest["runs"][0], root)
 
         self.assertEqual(metrics["scenario"], "no_disturbance")
         self.assertEqual(metrics["analysis_onset_s"], 104.0)
-        self.assertEqual(metrics["analysis_stop_s"], 112.75)
+        self.assertEqual(metrics["analysis_stop_s"], 113.0)
         self.assertEqual(metrics["minimum_base_height_m"], 0.34)
         self.assertEqual(metrics["estimate_rmse_n"], 0.0)
         self.assertEqual(metrics["freeze_rate"], 0.0)
         self.assertEqual(metrics["projection_rate"], 0.0)
+
+    # Production mutation caught: requiring wrench.csv for no_disturbance even
+    # though Task 4's completeness contract omits it for zero-force runs.
+    def test_missing_no_disturbance_wrench_uses_explicit_zero_truth(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][0]
+            (root / run["run_id"] / "wrench.csv").unlink()
+
+            metrics = module.analyze_run(run, root)
+
+        self.assertEqual(metrics["analysis_onset_s"], 104.0)
+        self.assertEqual(metrics["analysis_stop_s"], 113.0)
+        self.assertEqual(metrics["disturbance_sample_count"], 0)
+        self.assertEqual(metrics["estimate_rmse_n"], 0.0)
 
     # Production mutation caught: accepting a 29-run campaign and therefore
     # computing medians from an unpaired or incomplete experiment matrix.
@@ -511,12 +540,176 @@ class CampaignValidationTest(unittest.TestCase):
             path = root / run["run_id"] / "wrench.csv"
             rows = read_csv(path)
             for row in rows:
-                row["fy"] = "20.0" if row["wall_elapsed"] in (
-                    "6.25", "6.50") else "0.0"
+                retained = row["wall_elapsed"] in ("6.25", "6.50")
+                row["service_called"] = "1" if retained else "0"
+                row["fy"] = "20.0" if retained else "0.0"
             write_csv(path, tuple(rows[0]), rows)
 
             with self.assertRaisesRegex(ValueError,
                                         "too few disturbance samples"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: deriving sine onset from nonzero magnitude
+    # and dropping the successfully applied zero-valued first sine sample.
+    def test_sine_zero_valued_successful_onset_is_included(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "sine_fy")
+
+            metrics = module.analyze_run(run, root)
+
+        self.assertEqual(metrics["analysis_onset_s"], 106.0)
+        self.assertEqual(metrics["analysis_stop_s"], 112.0)
+        self.assertEqual(metrics["disturbance_sample_count"], 24)
+
+    # Production mutation caught: treating a scheduled force row as valid even
+    # when Gazebo reported that the wrench service call failed.
+    def test_failed_force_application_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "sine_fy")
+            path = root / run["run_id"] / "wrench.csv"
+            rows = read_csv(path)
+            next(row for row in rows
+                 if row["wall_elapsed"] == "6.00")["service_success"] = "0"
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError,
+                                        "wrench service call failed"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: accepting a recorded force value that does
+    # not match the frozen constant-force waveform.
+    def test_force_waveform_mismatch_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "wrench.csv"
+            rows = read_csv(path)
+            next(row for row in rows
+                 if row["wall_elapsed"] == "7.00")["fy"] = "19.0"
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "force waveform"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: allowing the successful-call window to end
+    # one sample before the frozen six-second force duration.
+    def test_force_duration_mismatch_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "wrench.csv"
+            rows = read_csv(path)
+            next(row for row in rows
+                 if row["wall_elapsed"] == "11.75")["service_called"] = "0"
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "force schedule"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: ignoring an active gait that differs from
+    # the frozen static_walk command.
+    def test_motion_gait_mismatch_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][0]
+            path = root / run["run_id"] / "motion.csv"
+            rows = read_csv(path)
+            next(row for row in rows
+                 if row["wall_elapsed"] == "5.00")["gait"] = "trot"
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "motion gait"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: validating vx but silently accepting drift
+    # in vx, vy, or yaw_rate from the frozen motion command.
+    def test_motion_velocity_components_are_all_validated(self):
+        module = load_analyzer()
+        mutations = (("vx", "0.09"), ("vy", "0.01"),
+                     ("yaw_rate", "0.02"))
+        for field, value in mutations:
+            with self.subTest(field=field):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    run = manifest["runs"][0]
+                    path = root / run["run_id"] / "motion.csv"
+                    rows = read_csv(path)
+                    next(row for row in rows
+                         if row["wall_elapsed"] == "5.00")[field] = value
+                    write_csv(path, tuple(rows[0]), rows)
+
+                    with self.assertRaisesRegex(ValueError,
+                                                "motion command"):
+                        module.analyze_run(run, root)
+
+    # Production mutation caught: trusting active flags instead of checking the
+    # frozen four-second delay and nine-second motion duration.
+    def test_motion_timing_mismatch_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][0]
+            path = root / run["run_id"] / "motion.csv"
+            rows = read_csv(path)
+            next(row for row in rows
+                 if row["wall_elapsed"] == "4.00")["active"] = "0"
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "motion timing"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: shrinking the apparent force window to the
+    # surviving rows when the beginning of wrench truth is truncated.
+    def test_truncated_wrench_truth_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "wrench.csv"
+            rows = [row for row in read_csv(path)
+                    if float(row["wall_elapsed"]) >= 6.5]
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError,
+                                        "wrench truth coverage"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: allowing interpolation to bridge a multi-
+    # second hole in wrench truth and fabricate force values in the gap.
+    def test_disjoint_wrench_truth_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "wrench.csv"
+            rows = [row for row in read_csv(path)
+                    if not 8.0 <= float(row["wall_elapsed"]) < 10.5]
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError,
+                                        "wrench truth coverage"):
                 module.analyze_run(run, root)
 
     # Production mutation caught: trusting a no-disturbance label while its
@@ -553,6 +746,48 @@ class CampaignValidationTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "timestamp overlap"):
                 module.analyze_run(run, root)
+
+    # Production mutation caught: using endpoint extrapolation when requested
+    # times lie outside the source series instead of rejecting absent coverage.
+    def test_interpolation_rejects_endpoint_extrapolation(self):
+        module = load_analyzer()
+        source = [
+            {"ros_time": 1.0, "fy": 10.0},
+            {"ros_time": 2.0, "fy": 20.0},
+        ]
+
+        with self.assertRaisesRegex(ValueError, "source coverage"):
+            module._nearest_values([0.5, 1.5], source, "ros_time", "fy")
+
+    # Production mutation caught: helper-only motion tests passing while the
+    # full run path reports absolute y and wrapped roll instead of onset deltas.
+    def test_analyze_run_reports_onset_relative_lateral_and_unwrapped_roll(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "sine_fy")
+            path = root / run["run_id"] / "shadow.csv"
+            rows = read_csv(path)
+            for row in rows:
+                if float(row["time_s"]) <= 106.0:
+                    row["actual_base_y_m"] = "2.0"
+                    row["actual_base_roll_rad"] = "3.13"
+                else:
+                    row["actual_base_y_m"] = "2.03"
+                    row["actual_base_roll_rad"] = "-3.13"
+            write_csv(path, tuple(rows[0]), rows)
+
+            metrics = module.analyze_run(run, root)
+
+        self.assertAlmostEqual(metrics["lateral_rms_m"],
+                               0.0293938769133981, places=12)
+        self.assertAlmostEqual(metrics["lateral_max_m"], 0.03, places=12)
+        self.assertAlmostEqual(metrics["roll_rms_deg"],
+                               1.30158070873515, places=12)
+        self.assertAlmostEqual(metrics["roll_max_deg"],
+                               1.32842024810467, places=12)
 
 
 def paired_metric_run(method, repeat, lateral_rms):

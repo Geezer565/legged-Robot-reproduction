@@ -15,6 +15,9 @@ import myrbf_v5a_campaign_schema as campaign_schema
 
 MIN_DISTURBANCE_SAMPLES = 10
 MIN_STREAM_OVERLAP = 0.95
+MAX_SAMPLE_GAP_FACTOR = 3.0
+FORCE_TOLERANCE_N = 1e-6
+COMMAND_TOLERANCE = 1e-9
 PAIRED_METRICS = (
     "estimate_rmse_n",
     "estimate_correlation",
@@ -269,6 +272,8 @@ def _read_csv(path, required_fields, string_fields=(), skip_leading_nonfinite=Fa
 
 
 def _nearest_values(sample_times, source_rows, time_field, value_field):
+    if not sample_times:
+        return []
     source_times = np.asarray([row[time_field] for row in source_rows], dtype=float)
     source_values = np.asarray([row[value_field] for row in source_rows], dtype=float)
     order = np.argsort(source_times)
@@ -276,8 +281,107 @@ def _nearest_values(sample_times, source_rows, time_field, value_field):
     source_values = source_values[order]
     unique_times, unique_indices = np.unique(source_times, return_index=True)
     unique_values = source_values[unique_indices]
-    return np.interp(np.asarray(sample_times, dtype=float),
+    requested = np.asarray(sample_times, dtype=float)
+    if (requested.min() < unique_times[0] - 1e-12 or
+            requested.max() > unique_times[-1] + 1e-12):
+        raise ValueError("source coverage does not include requested times")
+    return np.interp(requested,
                      unique_times, unique_values).tolist()
+
+
+def _validate_schedule_coverage(rows, start, stop, label):
+    wall_times = [row["wall_elapsed"] for row in rows]
+    if len(wall_times) < 3:
+        raise ValueError("%s has too few samples" % label)
+    differences = [right - left
+                   for left, right in zip(wall_times, wall_times[1:])]
+    if any(value <= 0.0 for value in differences):
+        raise ValueError("%s has nonmonotonic sample times" % label)
+    period = float(np.median(np.asarray(differences, dtype=float)))
+    if wall_times[0] > start or wall_times[-1] < stop:
+        raise ValueError("%s does not cover the frozen window" % label)
+    if max(differences) > MAX_SAMPLE_GAP_FACTOR * period + 1e-12:
+        raise ValueError("%s is disjoint inside the frozen window" % label)
+    ros_times = [row["ros_time"] for row in rows]
+    if any(right < left - 1e-12
+           for left, right in zip(ros_times, ros_times[1:])):
+        raise ValueError("%s has nonmonotonic ROS times" % label)
+    return tuple(_nearest_values(
+        [start, stop], rows, "wall_elapsed", "ros_time"))
+
+
+def _validate_motion(motion, scenario_spec):
+    start = scenario_spec["motion_delay_s"]
+    stop = start + scenario_spec["motion_duration_s"]
+    onset_ros, stop_ros = _validate_schedule_coverage(
+        motion, start, stop, "motion coverage")
+    for row in motion:
+        expected_active = start <= row["wall_elapsed"] < stop
+        recorded_active = row["active"] > 0.5
+        if recorded_active != expected_active:
+            raise ValueError("motion timing does not match frozen window")
+        expected_gait = scenario_spec["gait"] if expected_active else "stance"
+        if row["gait"] != expected_gait:
+            raise ValueError("motion gait does not match frozen command")
+        expected = (
+            scenario_spec["vx_mps"] if expected_active else 0.0,
+            scenario_spec["vy_mps"] if expected_active else 0.0,
+            scenario_spec["yaw_rate_rps"] if expected_active else 0.0,
+        )
+        recorded = (row["vx"], row["vy"], row["yaw_rate"])
+        if any(abs(value - wanted) > COMMAND_TOLERANCE
+               for value, wanted in zip(recorded, expected)):
+            raise ValueError("motion command does not match frozen velocity")
+    return onset_ros, stop_ros
+
+
+def _expected_force_value(scenario_spec, elapsed):
+    start = scenario_spec["force_onset_s"]
+    stop = start + scenario_spec["force_duration_s"]
+    if not start <= elapsed < stop:
+        return 0.0
+    if scenario_spec["force_profile"] == "constant":
+        return scenario_spec["force_value_n"]
+    if scenario_spec["force_profile"] == "sine":
+        return (
+            scenario_spec["force_value_n"] +
+            scenario_spec["force_amplitude_n"] * math.sin(
+                2.0 * math.pi * scenario_spec["force_frequency_hz"] *
+                (elapsed - start))
+        )
+    raise ValueError("unsupported frozen disturbance profile")
+
+
+def _validate_disturbance_wrench(wrench, scenario_spec):
+    start = scenario_spec["force_onset_s"]
+    stop = start + scenario_spec["force_duration_s"]
+    onset_ros, stop_ros = _validate_schedule_coverage(
+        wrench, start, stop, "wrench truth coverage")
+    called_rows = [row for row in wrench if row["service_called"] > 0.5]
+    if len(called_rows) < MIN_DISTURBANCE_SAMPLES:
+        raise ValueError("too few disturbance samples in wrench truth")
+    for row in wrench:
+        expected_active = start <= row["wall_elapsed"] < stop
+        recorded_active = row["service_called"] > 0.5
+        if recorded_active != expected_active:
+            raise ValueError("force schedule does not match frozen duration")
+        if recorded_active and row["service_success"] <= 0.5:
+            raise ValueError("wrench service call failed in force window")
+        expected_fy = _expected_force_value(
+            scenario_spec, row["wall_elapsed"])
+        if abs(row["fy"] - expected_fy) > FORCE_TOLERANCE_N:
+            raise ValueError("force waveform does not match frozen scenario")
+        if any(abs(row[axis]) > FORCE_TOLERANCE_N
+               for axis in ("fx", "fz", "tx", "ty", "tz")):
+            raise ValueError("force waveform uses a non-frozen wrench axis")
+    return onset_ros, stop_ros, len(called_rows)
+
+
+def _validate_zero_wrench(wrench):
+    if any(abs(row[axis]) > FORCE_TOLERANCE_N
+           for row in wrench
+           for axis in ("fx", "fy", "fz", "tx", "ty", "tz")):
+        raise ValueError("no_disturbance contains nonzero force truth")
 
 
 def _relative_values(time, values, onset, stop, unwrap=False):
@@ -320,6 +424,8 @@ def _longest_saturation_duration(times, allocator):
 
 def analyze_run(run, root):
     directory = _run_directory(root, run)
+    scenario = run["scenario"]
+    scenario_spec = campaign_schema.SCENARIOS[scenario]
     shadow = _read_csv(
         directory / "shadow.csv",
         campaign_schema.REQUIRED_CSV_FIELDS["shadow.csv"],
@@ -329,33 +435,29 @@ def analyze_run(run, root):
         campaign_schema.REQUIRED_CSV_FIELDS["state.csv"],
         skip_leading_nonfinite=True,
     )
-    wrench = _read_csv(
-        directory / "wrench.csv",
-        campaign_schema.REQUIRED_CSV_FIELDS["wrench.csv"],
-    )
     motion = _read_csv(
         directory / "motion.csv",
         campaign_schema.REQUIRED_CSV_FIELDS["motion.csv"],
         string_fields=("gait",),
     )
+    motion_onset, motion_stop = _validate_motion(motion, scenario_spec)
+    wrench_path = directory / "wrench.csv"
+    wrench = None
+    if scenario_spec["wrench_required"] or wrench_path.is_file():
+        wrench = _read_csv(
+            wrench_path,
+            campaign_schema.REQUIRED_CSV_FIELDS["wrench.csv"],
+        )
 
-    scenario = run["scenario"]
-    if scenario == "no_disturbance":
-        if any(abs(row["fy"]) > 1e-9 for row in wrench):
-            raise ValueError("no_disturbance contains nonzero force truth")
-        active_motion = [row for row in motion if row["active"] > 0.5]
-        if len(active_motion) < 2:
-            raise ValueError("no_disturbance has too few active motion samples")
-        onset = active_motion[0]["ros_time"]
-        stop = active_motion[-1]["ros_time"]
+    if not scenario_spec["wrench_required"]:
+        if wrench is not None:
+            _validate_zero_wrench(wrench)
+        onset = motion_onset
+        stop = motion_stop
         disturbance_count = 0
     else:
-        active_truth = [row for row in wrench if abs(row["fy"]) >= 0.05]
-        if len(active_truth) < MIN_DISTURBANCE_SAMPLES:
-            raise ValueError("too few disturbance samples in wrench truth")
-        onset = active_truth[0]["ros_time"]
-        stop = active_truth[-1]["ros_time"]
-        disturbance_count = len(active_truth)
+        onset, stop, disturbance_count = _validate_disturbance_wrench(
+            wrench, scenario_spec)
     if stop <= onset:
         raise ValueError("analysis window has nonpositive duration")
 
@@ -371,7 +473,7 @@ def analyze_run(run, root):
         raise ValueError("controller/estimator timestamp overlap is below 95%")
 
     external = (_nearest_values(shadow_times, wrench, "ros_time", "fy")
-                if scenario != "no_disturbance"
+                if scenario_spec["wrench_required"]
                 else [0.0] * len(active_shadow))
     estimate = [row["estimate_after_fy_n"] for row in active_shadow]
     requested = [row["requested_control_fy_n"] for row in active_shadow]
