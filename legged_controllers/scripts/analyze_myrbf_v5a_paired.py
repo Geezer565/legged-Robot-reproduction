@@ -169,6 +169,45 @@ def _run_directory(root, run):
     return directory
 
 
+def _validate_launch_command(run):
+    command = run["command"]
+    if (not isinstance(command, list) or not command or
+            any(not isinstance(argument, str) or not argument
+                for argument in command)):
+        raise ValueError("run command argument list is invalid")
+    prefix_length = len(campaign_schema.LAUNCH_PREFIX)
+    if tuple(command[:prefix_length]) != campaign_schema.LAUNCH_PREFIX:
+        raise ValueError("run launch command has the wrong executable or launch file")
+    arguments = {}
+    for argument in command[prefix_length:]:
+        if ":=" not in argument:
+            raise ValueError("run launch command contains a malformed argument")
+        name, value = argument.split(":=", 1)
+        if not name or not value or name in arguments:
+            raise ValueError("run launch command contains an invalid argument")
+        arguments[name] = value
+    expected = campaign_schema.expected_launch_arguments(
+        run["method"], run["scenario"], run["seed"])
+    expected_names = set(expected) | set(campaign_schema.LAUNCH_OUTPUT_ARGUMENTS)
+    if set(arguments) != expected_names:
+        raise ValueError("run launch command arguments do not match frozen schema")
+    if any(arguments[name] != value for name, value in expected.items()):
+        raise ValueError("run launch command settings do not match frozen schema")
+
+
+def _initial_state_difference(field, left, right):
+    difference = abs(float(left[field]) - float(right[field]))
+    if field in campaign_schema.INITIAL_ORIENTATION_FIELDS:
+        difference = min(difference, abs(2.0 * math.pi - difference))
+    return difference
+
+
+def _validate_paired_initial_state(reference, candidate):
+    for field, tolerance in campaign_schema.INITIAL_STATE_TOLERANCES.items():
+        if _initial_state_difference(field, reference, candidate) > tolerance + 1e-12:
+            raise ValueError("recorded initial state differs within pair")
+
+
 def validate_campaign(manifest, root):
     missing = _missing_fields(manifest, campaign_schema.REQUIRED_MANIFEST_FIELDS)
     if missing:
@@ -192,6 +231,7 @@ def validate_campaign(manifest, root):
     run_ids = set()
     source_commit = None
     pair_conditions = {}
+    pair_initial_states = {}
     for index, run in enumerate(runs):
         if not isinstance(run, dict):
             raise ValueError("manifest run %d must be an object" % index)
@@ -239,11 +279,7 @@ def validate_campaign(manifest, root):
                 raise ValueError("paired conditions differ within pair")
         else:
             pair_conditions[pair_key] = run["paired_conditions"]
-        command = run["command"]
-        if (not isinstance(command, list) or not command or
-                any(not isinstance(argument, str) or not argument
-                    for argument in command)):
-            raise ValueError("run command argument list is invalid")
+        _validate_launch_command(run)
         if not isinstance(run["safety_stop_detected"], bool):
             raise ValueError("run safety_stop_detected must be boolean")
         if run["safety_stop_detected"]:
@@ -255,6 +291,17 @@ def validate_campaign(manifest, root):
         directory = _run_directory(root, run)
         if not directory.is_dir():
             raise ValueError("run directory is missing: %s" % run["run_id"])
+        state = _read_csv(
+            directory / "state.csv",
+            campaign_schema.REQUIRED_CSV_FIELDS["state.csv"],
+            skip_leading_nonfinite=True,
+        )
+        initial_state = state[0]
+        if pair_key in pair_initial_states:
+            _validate_paired_initial_state(
+                pair_initial_states[pair_key], initial_state)
+        else:
+            pair_initial_states[pair_key] = initial_state
 
     expected = set(campaign_schema.expected_run_identities())
     actual = set(identities)
@@ -557,6 +604,7 @@ def analyze_run(run, root):
     )
     roll_deg = [math.degrees(value) for value in roll_rad]
     allocator = [row["allocator_scale"] for row in active_shadow]
+    full_allocator = [row["allocator_scale"] for row in shadow]
     projection = [
         1.0 if any(row["projection_active_" + axis] > 0.5
                    for axis in ("fx", "fy", "fz", "tx", "ty", "tz"))
@@ -590,9 +638,8 @@ def analyze_run(run, root):
         "allocator_scale_mean": _mean(allocator),
         "allocator_scale_min": min(allocator),
         "saturation_duration_s": _longest_saturation_duration(
-            shadow_times, allocator),
-        "freeze_rate": _mean([row["update_frozen"]
-                              for row in active_shadow]),
+            all_shadow_times, full_allocator),
+        "freeze_rate": _mean([row["update_frozen"] for row in shadow]),
         "projection_rate": _mean(projection),
         "minimum_base_height_m": min(row["base_z"] for row in state),
         "recovery_2s_lateral_m": abs(recovery_y - onset_y),
@@ -807,9 +854,17 @@ def evaluate_gates(summary, protocol):
 
     passed = safety["passed"] and all(
         item["passed"] for item in scenarios.values())
+    if passed:
+        decision = "PASS_ALL"
+    elif (safety["passed"] and scenarios["no_disturbance"]["passed"] and
+          scenarios["sine_fy"]["passed"] and
+          not scenarios["constant_fy"]["passed"]):
+        decision = "CONSTANT_ONLY_FAIL"
+    else:
+        decision = "GENERAL_FAIL"
     return {
         "passed": passed,
-        "decision": "PASS_ALL" if passed else "GENERAL_FAIL",
+        "decision": decision,
         "safety": safety,
         "scenarios": scenarios,
     }
@@ -912,9 +967,17 @@ def analyze_campaign(root):
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Analyze the frozen MyRBF V4/V5-A paired campaign.")
-    parser.add_argument("root", type=Path, help="campaign root containing manifest.json")
+    parser.add_argument(
+        "root", nargs="?", type=Path,
+        help="campaign root containing manifest.json")
+    parser.add_argument(
+        "--root", dest="root_option", type=Path,
+        help="campaign root containing manifest.json")
     args = parser.parse_args(argv)
-    result = analyze_campaign(args.root)
+    if (args.root is None) == (args.root_option is None):
+        parser.error("provide exactly one campaign root: PATH or --root PATH")
+    root = args.root if args.root is not None else args.root_option
+    result = analyze_campaign(root)
     print(json.dumps(result["gate_results"], indent=2, allow_nan=False))
     return 0
 

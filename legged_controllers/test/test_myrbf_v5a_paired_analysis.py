@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import csv
+import contextlib
 import importlib.util
+import io
 import json
 import math
 from pathlib import Path
@@ -148,6 +150,59 @@ def paired_conditions_fixture(scenario, seed):
     return result
 
 
+def launch_command_fixture(method, scenario, seed, run_id):
+    scenarios = {
+        "no_disturbance": {
+            "duration": "15.0", "enable_wrench": "false",
+            "wrench_profile": "none", "wrench_value": "0.0",
+            "wrench_amplitude": "0.0", "wrench_frequency": "0.0",
+            "wrench_delay": "0.0", "wrench_duration": "0.0",
+        },
+        "constant_fy": {
+            "duration": "18.0", "enable_wrench": "true",
+            "wrench_profile": "constant", "wrench_value": "20.0",
+            "wrench_amplitude": "0.0", "wrench_frequency": "0.0",
+            "wrench_delay": "6.0", "wrench_duration": "6.0",
+        },
+        "sine_fy": {
+            "duration": "18.0", "enable_wrench": "true",
+            "wrench_profile": "sine", "wrench_value": "0.0",
+            "wrench_amplitude": "15.0", "wrench_frequency": "0.5",
+            "wrench_delay": "6.0", "wrench_duration": "6.0",
+        },
+    }
+    scenario_args = scenarios[scenario]
+    config = {
+        "V4": "myrbf_shadow_v4_go2.yaml",
+        "V5-A": "myrbf_shadow_v5a_go2.yaml",
+    }[method]
+    return [
+        "roslaunch", "legged_controllers", "myrbf_shadow_gazebo.launch",
+        "robot_type:=go2", "gui:=false", "seed:=%d" % seed,
+        "duration:=" + scenario_args["duration"],
+        "state_output:=" + run_id + "/state.csv",
+        "shadow_output:=" + run_id + "/shadow.csv",
+        "wrench_output:=" + run_id + "/wrench.csv",
+        "motion_output:=" + run_id + "/motion.csv",
+        "enable_shadow:=true", "enable_control_injection:=true",
+        "control_gain:=0.1", "control_force_limit:=3.0",
+        "control_rate_limit:=5.0", "myrbf_config:=" + config,
+        "enable_motion:=true", "motion_gait:=static_walk",
+        "motion_vx:=0.08", "motion_vy:=0.0",
+        "motion_yaw_rate:=0.0", "motion_delay:=4.0",
+        "motion_duration:=9.0",
+        "enable_wrench:=" + scenario_args["enable_wrench"],
+        "wrench_profile:=" + scenario_args["wrench_profile"],
+        "wrench_axis:=fy", "wrench_value:=" + scenario_args["wrench_value"],
+        "wrench_amplitude:=" + scenario_args["wrench_amplitude"],
+        "wrench_frequency:=" + scenario_args["wrench_frequency"],
+        "wrench_secondary_amplitude:=0.0",
+        "wrench_secondary_frequency:=0.0",
+        "wrench_delay:=" + scenario_args["wrench_delay"],
+        "wrench_duration:=" + scenario_args["wrench_duration"],
+    ]
+
+
 def build_complete_campaign(root):
     schema = load_schema()
     root = Path(root)
@@ -164,7 +219,12 @@ def build_complete_campaign(root):
         start_ros = 100.0
         shadow_rows = []
         state_rows = [{
-            "ros_time": "99.75", "base_y": "nan", "base_z": "nan",
+            "ros_time": "99.75",
+            "base_x": "nan", "base_y": "nan", "base_z": "nan",
+            "observation_base_yaw": "nan",
+            "observation_base_pitch": "nan",
+            "observation_base_roll": "nan",
+            "base_vx": "nan", "base_vy": "nan", "base_vz": "nan",
             "startup_extra": "not-ready",
         }]
         wrench_rows = []
@@ -201,8 +261,12 @@ def build_complete_campaign(root):
             })
             state_rows.append({
                 "ros_time": "%.2f" % ros_time,
-                "base_y": "%.6f" % (2.0 + response),
+                "base_x": "0.0", "base_y": "%.6f" % (2.0 + response),
                 "base_z": "0.34",
+                "observation_base_yaw": "0.0",
+                "observation_base_pitch": "0.0",
+                "observation_base_roll": "0.01",
+                "base_vx": "0.0", "base_vy": "0.0", "base_vz": "0.0",
                 "startup_extra": "ready",
             })
             wrench_rows.append({
@@ -237,7 +301,8 @@ def build_complete_campaign(root):
             "git_commit": "0b0544906739e33341075725b92ebe2c34da7eb0",
             "config_path": schema.METHOD_CONFIGS[method],
             "config_sha256": schema.METHOD_CONFIG_SHA256[method],
-            "command": ["synthetic", method, scenario],
+            "command": launch_command_fixture(
+                method, scenario, seed, run_id),
             "started_at": "2026-09-01T00:00:00Z",
             "finished_at": "2026-09-01T00:00:18Z",
             "exit_code": 0,
@@ -386,11 +451,59 @@ class CampaignSchemaTest(unittest.TestCase):
             "force_duration_s": 6.0,
         })
         self.assertEqual(schema.REQUIRED_CSV_FIELDS["state.csv"],
-                         ("ros_time", "base_y", "base_z"))
+                         (
+                             "ros_time", "base_x", "base_y", "base_z",
+                             "observation_base_yaw",
+                             "observation_base_pitch",
+                             "observation_base_roll",
+                             "base_vx", "base_vy", "base_vz",
+                         ))
         self.assertEqual(schema.REQUIRED_CSV_FIELDS["motion.csv"], (
             "ros_time", "wall_elapsed", "active", "gait", "vx", "vy",
             "yaw_rate",
         ))
+
+    # Production mutation caught: Task 4 and the analyzer drifting on launch
+    # arguments or on the numeric limits for recorded pair initial states.
+    def test_launch_and_initial_state_fairness_contract_is_exact(self):
+        schema = load_schema()
+
+        self.assertEqual(getattr(schema, "INITIAL_STATE_TOLERANCES", None), {
+            "base_x": 0.01, "base_y": 0.01, "base_z": 0.01,
+            "observation_base_yaw": 0.01,
+            "observation_base_pitch": 0.01,
+            "observation_base_roll": 0.01,
+            "base_vx": 0.02, "base_vy": 0.02, "base_vz": 0.02,
+        })
+        self.assertEqual(
+            schema.expected_launch_arguments("V5-A", "sine_fy", 4103),
+            {
+                "robot_type": "go2", "gui": "false", "seed": "4103",
+                "duration": "18.0", "enable_shadow": "true",
+                "enable_control_injection": "true", "control_gain": "0.1",
+                "control_force_limit": "3.0", "control_rate_limit": "5.0",
+                "myrbf_config": "myrbf_shadow_v5a_go2.yaml",
+                "enable_motion": "true", "motion_gait": "static_walk",
+                "motion_vx": "0.08", "motion_vy": "0.0",
+                "motion_yaw_rate": "0.0", "motion_delay": "4.0",
+                "motion_duration": "9.0", "enable_wrench": "true",
+                "wrench_profile": "sine", "wrench_axis": "fy",
+                "wrench_value": "0.0", "wrench_amplitude": "15.0",
+                "wrench_frequency": "0.5",
+                "wrench_secondary_amplitude": "0.0",
+                "wrench_secondary_frequency": "0.0",
+                "wrench_delay": "6.0", "wrench_duration": "6.0",
+            },
+        )
+        snapshot = schema.protocol_snapshot()
+        self.assertEqual(snapshot["launch"]["prefix"], [
+            "roslaunch", "legged_controllers", "myrbf_shadow_gazebo.launch",
+        ])
+        self.assertEqual(snapshot["launch"]["output_arguments"], [
+            "state_output", "shadow_output", "wrench_output", "motion_output",
+        ])
+        self.assertEqual(snapshot["initial_state_tolerances"],
+                         schema.INITIAL_STATE_TOLERANCES)
 
 
 class OnsetRelativeMotionTest(unittest.TestCase):
@@ -510,6 +623,70 @@ class CampaignValidationTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "command argument list"):
                 module.validate_campaign(manifest, root)
+
+    # Production mutation caught: treating any string-list command as fair and
+    # accepting a wrong package, seed, source config, or shared control setting.
+    def test_manifest_command_must_match_actual_frozen_launch(self):
+        module = load_analyzer()
+        mutations = (
+            ("legged_controllers", "wrong_package"),
+            ("seed:=4101", "seed:=9999"),
+            ("myrbf_config:=myrbf_shadow_v4_go2.yaml",
+             "myrbf_config:=myrbf_shadow_v5a_go2.yaml"),
+            ("control_gain:=0.1", "control_gain:=0.2"),
+        )
+        for original, replacement in mutations:
+            with self.subTest(replacement=replacement):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    command = manifest["runs"][0]["command"]
+                    command[command.index(original)] = replacement
+
+                    with self.assertRaisesRegex(ValueError,
+                                                "launch command"):
+                        module.validate_campaign(manifest, root)
+
+    # Production mutation caught: comparing only declared pair settings and
+    # accepting position, orientation, or velocity differences in recorded data.
+    def test_recorded_initial_state_must_match_within_tolerances(self):
+        module = load_analyzer()
+        mutations = (
+            ("base_x", "0.010001"),
+            ("observation_base_roll", "0.020001"),
+            ("base_vx", "0.020001"),
+        )
+        for field, value in mutations:
+            with self.subTest(field=field):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    run = manifest["runs"][1]
+                    path = root / run["run_id"] / "state.csv"
+                    rows = read_csv(path)
+                    rows[1][field] = value
+                    write_csv(path, tuple(rows[0]), rows)
+
+                    with self.assertRaisesRegex(ValueError,
+                                                "initial state"):
+                        module.validate_campaign(manifest, root)
+
+    # Production mutation caught: changing an inclusive documented initial
+    # state tolerance into a strict comparison that rejects its exact boundary.
+    def test_recorded_initial_state_exact_tolerance_is_accepted(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][1]
+            path = root / run["run_id"] / "state.csv"
+            rows = read_csv(path)
+            rows[1]["base_x"] = "0.01"
+            rows[1]["observation_base_roll"] = "0.02"
+            rows[1]["base_vx"] = "0.02"
+            write_csv(path, tuple(rows[0]), rows)
+
+            module.validate_campaign(manifest, root)
 
     # Production mutation caught: trusting complete=true even when the runner's
     # independent log scan recorded that a safety stop occurred.
@@ -1073,6 +1250,46 @@ class CampaignValidationTest(unittest.TestCase):
                                         "state times.*excessive gap"):
                 module.analyze_run(run, root)
 
+    # Production mutation caught: computing the gate-facing freeze rate only
+    # inside the disturbance window and hiding frozen updates earlier in a run.
+    def test_analyze_run_freeze_rate_covers_complete_controller_stream(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "shadow.csv"
+            rows = read_csv(path)
+            for row in rows[:4]:
+                row["update_frozen"] = "1"
+            write_csv(path, tuple(rows[0]), rows)
+
+            metrics = module.analyze_run(run, root)
+
+        self.assertAlmostEqual(metrics["freeze_rate"],
+                               0.0547945205479452, places=12)
+
+    # Production mutation caught: measuring longest allocator saturation only
+    # inside the disturbance window and hiding an earlier unsafe interval.
+    def test_analyze_run_saturation_covers_complete_controller_stream(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "shadow.csv"
+            rows = read_csv(path)
+            for row in rows[:2]:
+                row["allocator_scale"] = "0.5"
+            write_csv(path, tuple(rows[0]), rows)
+
+            metrics = module.analyze_run(run, root)
+
+        self.assertAlmostEqual(metrics["saturation_duration_s"],
+                               0.5, places=12)
+
 
 def paired_metric_run(method, repeat, lateral_rms):
     values = {
@@ -1216,6 +1433,26 @@ class PairedSummaryAndGateTest(unittest.TestCase):
         self.assertEqual(results["decision"], "GENERAL_FAIL")
         self.assertFalse(results["safety"]["passed"])
 
+    # Production mutation caught: collapsing a campaign where only the
+    # constant-force gate fails into GENERAL_FAIL instead of its frozen route.
+    def test_constant_only_failure_has_distinct_decision(self):
+        module = load_analyzer()
+        schema = load_schema()
+        summary = passing_gate_summary()
+        row = next(item for item in summary
+                   if item["scenario"] == "constant_fy"
+                   and item["metric"] == "lateral_rms_m")
+        row["v5a_median"] = 1.050000000002
+
+        results = module.evaluate_gates(summary, schema.protocol_snapshot())
+
+        self.assertFalse(results["passed"])
+        self.assertEqual(results["decision"], "CONSTANT_ONLY_FAIL")
+        self.assertTrue(results["safety"]["passed"])
+        self.assertTrue(results["scenarios"]["no_disturbance"]["passed"])
+        self.assertFalse(results["scenarios"]["constant_fy"]["passed"])
+        self.assertTrue(results["scenarios"]["sine_fy"]["passed"])
+
 
 class CampaignOutputTest(unittest.TestCase):
     # Production mutation caught: returning in-memory metrics without writing
@@ -1248,6 +1485,43 @@ class CampaignOutputTest(unittest.TestCase):
             self.assertEqual(len(rows),
                              3 * len(module.PAIRED_METRICS))
             self.assertEqual(rows[0]["pair_1_repeat"], "1")
+
+    # Production mutation caught: retaining only the positional campaign path
+    # and rejecting the plan's --root form before analysis can start.
+    def test_cli_accepts_positional_and_root_option_forms(self):
+        module = load_analyzer()
+        forms = (("positional", lambda root: [str(root)]),
+                 ("option", lambda root: ["--root", str(root)]))
+        for name, arguments in forms:
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    build_complete_campaign(root)
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        with contextlib.redirect_stderr(io.StringIO()):
+                            try:
+                                result = module.main(arguments(root))
+                            except SystemExit as error:
+                                result = error.code
+
+                    self.assertEqual(result, 0)
+                    self.assertTrue((root / "metrics.json").is_file())
+
+    # Production mutation caught: letting argparse choose an ambiguous root or
+    # emit unrelated errors when both or neither CLI root forms are supplied.
+    def test_cli_rejects_both_or_neither_root_with_clear_error(self):
+        module = load_analyzer()
+        cases = ((), ("campaign-a", "--root", "campaign-b"))
+        for arguments in cases:
+            with self.subTest(arguments=arguments):
+                error_output = io.StringIO()
+                with contextlib.redirect_stderr(error_output):
+                    with self.assertRaises(SystemExit) as raised:
+                        module.main(list(arguments))
+
+                self.assertEqual(raised.exception.code, 2)
+                self.assertIn("provide exactly one campaign root",
+                              error_output.getvalue())
 
 
 if __name__ == "__main__":

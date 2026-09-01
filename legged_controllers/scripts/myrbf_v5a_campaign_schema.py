@@ -19,6 +19,41 @@ METHOD_CONFIG_SHA256 = {
     "V5-A": "e00afb30644f08e5d859262d55d103ff69525231997b50fdca7007e38918f70c",
 }
 
+LAUNCH_PREFIX = (
+    "roslaunch", "legged_controllers", "myrbf_shadow_gazebo.launch",
+)
+LAUNCH_OUTPUT_ARGUMENTS = (
+    "state_output", "shadow_output", "wrench_output", "motion_output",
+)
+COMMON_LAUNCH_ARGUMENTS = {
+    "robot_type": "go2",
+    "gui": "false",
+    "enable_shadow": "true",
+    "enable_control_injection": "true",
+    "control_gain": "0.1",
+    "control_force_limit": "3.0",
+    "control_rate_limit": "5.0",
+    "enable_motion": "true",
+    "wrench_secondary_amplitude": "0.0",
+    "wrench_secondary_frequency": "0.0",
+}
+INITIAL_STATE_TOLERANCES = {
+    "base_x": 0.01,
+    "base_y": 0.01,
+    "base_z": 0.01,
+    "observation_base_yaw": 0.01,
+    "observation_base_pitch": 0.01,
+    "observation_base_roll": 0.01,
+    "base_vx": 0.02,
+    "base_vy": 0.02,
+    "base_vz": 0.02,
+}
+INITIAL_ORIENTATION_FIELDS = (
+    "observation_base_yaw",
+    "observation_base_pitch",
+    "observation_base_roll",
+)
+
 SCENARIOS = {
     "no_disturbance": {
         "duration_s": 15.0,
@@ -145,7 +180,18 @@ REQUIRED_CSV_FIELDS = {
         "projection_active_ty",
         "projection_active_tz",
     ),
-    "state.csv": ("ros_time", "base_y", "base_z"),
+    "state.csv": (
+        "ros_time",
+        "base_x",
+        "base_y",
+        "base_z",
+        "observation_base_yaw",
+        "observation_base_pitch",
+        "observation_base_roll",
+        "base_vx",
+        "base_vy",
+        "base_vz",
+    ),
     "wrench.csv": (
         "ros_time",
         "wall_elapsed",
@@ -187,6 +233,37 @@ def paired_conditions(scenario, seed):
     return copy.deepcopy(conditions)
 
 
+def expected_launch_arguments(method, scenario, seed):
+    if method not in METHODS:
+        raise ValueError("unknown paired method")
+    if scenario not in SCENARIOS:
+        raise ValueError("unknown paired scenario")
+    spec = SCENARIOS[scenario]
+    arguments = copy.deepcopy(COMMON_LAUNCH_ARGUMENTS)
+    arguments.update({
+        "seed": str(seed),
+        "duration": str(spec["duration_s"]),
+        "myrbf_config": METHOD_CONFIGS[method].rsplit("/", 1)[-1],
+        "motion_gait": spec["gait"],
+        "motion_vx": str(spec["vx_mps"]),
+        "motion_vy": str(spec["vy_mps"]),
+        "motion_yaw_rate": str(spec["yaw_rate_rps"]),
+        "motion_delay": str(spec["motion_delay_s"]),
+        "motion_duration": str(spec["motion_duration_s"]),
+        "enable_wrench": str(spec["wrench_required"]).lower(),
+        "wrench_profile": spec["force_profile"],
+        "wrench_axis": spec["force_axis"],
+        "wrench_value": str(spec["force_value_n"]),
+        "wrench_amplitude": str(spec["force_amplitude_n"]),
+        "wrench_frequency": str(spec["force_frequency_hz"]),
+        "wrench_delay": str(
+            0.0 if spec["force_onset_s"] is None
+            else spec["force_onset_s"]),
+        "wrench_duration": str(spec["force_duration_s"]),
+    })
+    return arguments
+
+
 def protocol_snapshot():
     methods = {
         method: {
@@ -211,4 +288,10 @@ def protocol_snapshot():
         "scenarios": SCENARIOS,
         "repeats": repeats,
         "gates": GATE_THRESHOLDS,
+        "launch": {
+            "prefix": list(LAUNCH_PREFIX),
+            "output_arguments": list(LAUNCH_OUTPUT_ARGUMENTS),
+            "common_arguments": COMMON_LAUNCH_ARGUMENTS,
+        },
+        "initial_state_tolerances": INITIAL_STATE_TOLERANCES,
     })
