@@ -348,7 +348,7 @@ def build_complete_campaign(root):
         "source_commit": "0b0544906739e33341075725b92ebe2c34da7eb0",
         "files": {
             relative: "0" * 64
-            for relative in schema.EXECUTION_CRITICAL_FILES
+            for relative in schema.SOURCE_LOCK_SENTINELS
         },
     }
     source_lock_sha256 = hashlib.sha256(json.dumps(

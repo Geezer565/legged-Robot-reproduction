@@ -3,7 +3,9 @@
 import importlib.util
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
@@ -42,6 +44,59 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
         self.assertEqual(start, 100.0)
         self.assertEqual(published, [100.0])
         self.assertEqual(clock_reads, ["read"])
+
+    # Production mutation caught: returning from the actual unpause helper
+    # immediately after the latched publication, before a late subscriber can
+    # connect and receive the retained campaign start.
+    def test_unpause_main_keeps_latched_start_alive_for_late_subscriber(self):
+        unpause = load_script("unpause_when_controller_ready")
+        published = []
+        late_received = []
+
+        class LatchedPublisher:
+            def publish(self, message):
+                published.append(message.data)
+
+        def service_proxy(name, _service_type):
+            if name == "/controller_manager/list_controllers":
+                return lambda: SimpleNamespace(controller=[
+                    SimpleNamespace(
+                        name="controllers/legged_controller",
+                        state="running",
+                    ),
+                ])
+            if name == "/controller_manager/load_controller":
+                return lambda _controller: SimpleNamespace(ok=True)
+            if name == "/controller_manager/switch_controller":
+                return lambda _request: SimpleNamespace(ok=True)
+            if name == "/gazebo/get_joint_properties":
+                return lambda joint: SimpleNamespace(
+                    success=True,
+                    position=[0.72 if joint.endswith("LF_HFE") else -1.44],
+                )
+            if name == "/gazebo/unpause_physics":
+                return lambda: SimpleNamespace()
+            raise AssertionError("unexpected service: %s" % name)
+
+        def spin_until_late_subscriber_connects():
+            late_received.append(published[-1])
+
+        with mock.patch.multiple(
+                unpause.rospy,
+                init_node=mock.DEFAULT,
+                wait_for_service=mock.DEFAULT,
+                ServiceProxy=mock.Mock(side_effect=service_proxy),
+                Publisher=mock.Mock(return_value=LatchedPublisher()),
+                is_shutdown=mock.Mock(return_value=False),
+                get_time=mock.Mock(return_value=100.0),
+                sleep=mock.DEFAULT,
+                loginfo=mock.DEFAULT,
+                spin=mock.Mock(side_effect=spin_until_late_subscriber_connects),
+        ), mock.patch.object(unpause.time, "monotonic", return_value=0.0):
+            unpause.main()
+
+        self.assertEqual(published, [100.0])
+        self.assertEqual(late_received, [100.0])
 
     def test_all_timing_scripts_use_shared_ros_elapsed_after_delayed_start(self):
         modules = [

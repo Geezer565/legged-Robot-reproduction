@@ -318,8 +318,12 @@ def validate_campaign(manifest, root):
             source_lock.get("schema_version") !=
             campaign_schema.SOURCE_LOCK_VERSION or
             not isinstance(source_files, dict) or
-            set(source_files) !=
-            set(campaign_schema.EXECUTION_CRITICAL_FILES) or
+            not set(campaign_schema.SOURCE_LOCK_SENTINELS).issubset(
+                source_files) or
+            any(not isinstance(relative, str) or not relative or
+                Path(relative).is_absolute() or
+                ".." in Path(relative).parts
+                for relative in source_files) or
             any(not isinstance(value, str) or len(value) != 64 or
                 any(character not in "0123456789abcdef" for character in value)
                 for value in source_files.values())):

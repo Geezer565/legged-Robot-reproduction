@@ -103,43 +103,52 @@ def create_source_lock(source_root, source_commit):
         raise ValueError("Git is not usable for source-lock creation") from error
     if source_head != source_commit:
         raise ValueError("source commit does not match source HEAD")
-    critical_files = tuple(campaign_schema.EXECUTION_CRITICAL_FILES)
-    tracked = subprocess.check_output(
-        ["git", "ls-files", "--", *critical_files],
-        cwd=str(source_root), text=True,
-    ).splitlines()
-    if set(tracked) != set(critical_files):
-        raise ValueError("source-lock critical files must all be tracked")
+    tracked_output = subprocess.check_output(
+        ["git", "ls-files", "-z"], cwd=str(source_root)
+    )
+    tracked = tuple(
+        os.fsdecode(relative)
+        for relative in tracked_output.split(b"\0")
+        if relative
+    )
+    if (not tracked or len(set(tracked)) != len(tracked) or
+            not set(campaign_schema.SOURCE_LOCK_SENTINELS).issubset(tracked)):
+        raise ValueError(
+            "source-lock sentinels must all be present in tracked inventory")
     dirty = subprocess.check_output(
-        ["git", "status", "--porcelain", "--untracked-files=no", "--",
-         *critical_files],
-        cwd=str(source_root), text=True,
-    ).strip()
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=no"],
+        cwd=str(source_root),
+    )
     if dirty:
-        raise ValueError("dirty critical tracked files prevent source-lock creation")
+        raise ValueError("dirty tracked files prevent source-lock creation")
     return {
         "schema_version": campaign_schema.SOURCE_LOCK_VERSION,
         "source_commit": source_commit,
         "files": {
             relative: _sha256(source_root / relative)
-            for relative in critical_files
+            for relative in tracked
         },
     }
 
 
 def _verify_source_lock(source_root, source_lock):
-    expected = tuple(campaign_schema.EXECUTION_CRITICAL_FILES)
     files = source_lock.get("files") if isinstance(source_lock, dict) else None
     if (not isinstance(source_lock, dict) or
             source_lock.get("schema_version") !=
             campaign_schema.SOURCE_LOCK_VERSION or
             not isinstance(files, dict) or
-            set(files) != set(expected)):
+            not set(campaign_schema.SOURCE_LOCK_SENTINELS).issubset(
+                files)):
         raise ValueError("source-lock schema/file set drift")
-    for relative in expected:
+    for relative, expected_hash in files.items():
+        relative_path = Path(relative) if isinstance(relative, str) else None
+        if (relative_path is None or not relative or
+                relative_path.is_absolute() or ".." in relative_path.parts):
+            raise ValueError("source-lock path is invalid")
         path = Path(source_root) / relative
-        expected_hash = files.get(relative)
         if (not isinstance(expected_hash, str) or len(expected_hash) != 64 or
+                any(character not in "0123456789abcdef"
+                    for character in expected_hash) or
                 not path.is_file() or _sha256(path) != expected_hash):
             raise ValueError("source-lock drift for %s" % relative)
 

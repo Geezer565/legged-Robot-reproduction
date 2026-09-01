@@ -10,11 +10,13 @@ FROZEN_PROTOCOL_SHA256 = (
     "e6004dbbbc69b81fc58a8567196d46adf84c14dd2eee1b1acee656cca924c484"
 )
 
-EXECUTION_CRITICAL_FILES = (
+SOURCE_LOCK_SENTINELS = (
     "legged_controllers/CMakeLists.txt",
     "legged_controllers/package.xml",
     "legged_controllers/include/legged_controllers/LeggedController.h",
+    "legged_controllers/include/legged_controllers/SafetyChecker.h",
     "legged_controllers/src/LeggedController.cpp",
+    "legged_controllers/legged_controllers_plugins.xml",
     "legged_controllers/scripts/myrbf_v5a_campaign_schema.py",
     "legged_controllers/scripts/run_myrbf_v5a_paired_campaign.py",
     "legged_controllers/scripts/analyze_myrbf_v5a_paired.py",
@@ -39,7 +41,10 @@ EXECUTION_CRITICAL_FILES = (
     "legged_examples/legged_unitree/legged_unitree_description/urdf/common/gazebo.xacro",
     "legged_examples/legged_unitree/legged_unitree_description/urdf/common/imu.xacro",
     "legged_examples/legged_unitree/legged_unitree_description/urdf/go2/const.xacro",
+    "legged_examples/legged_unitree/legged_unitree_description/urdf/go2_description/xacro/robot.xacro",
+    "legged_common/scripts/generate_urdf.sh",
     "legged_gazebo/config/default.yaml",
+    "legged_gazebo/legged_hw_sim_plugins.xml",
     "legged_gazebo/worlds/empty_world.world",
 )
 
@@ -360,7 +365,7 @@ def protocol_snapshot():
     return copy.deepcopy({
         "schema_version": SCHEMA_VERSION,
         "source_lock_version": SOURCE_LOCK_VERSION,
-        "execution_critical_files": list(EXECUTION_CRITICAL_FILES),
+        "source_lock_sentinels": list(SOURCE_LOCK_SENTINELS),
         "protocol_file": PROTOCOL_FILENAME,
         "protocol_sha256": FROZEN_PROTOCOL_SHA256,
         "methods": methods,

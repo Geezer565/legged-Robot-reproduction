@@ -61,10 +61,11 @@ def read_csv(path):
 
 
 def write_portable_source_lock(module, source_root, path, source_commit):
+    required_files = module.campaign_schema.SOURCE_LOCK_SENTINELS
     files = {
         relative: hashlib.sha256(
             (source_root / relative).read_bytes()).hexdigest()
-        for relative in module.campaign_schema.EXECUTION_CRITICAL_FILES
+        for relative in required_files
     }
     lock = {
         "schema_version": module.campaign_schema.SOURCE_LOCK_VERSION,
@@ -828,50 +829,115 @@ class ProcessSupervisionTest(unittest.TestCase):
 class PortableSourceLockTest(unittest.TestCase):
     SOURCE_COMMIT = "8e7dd40b0eb085bc91b6c20fd660b0171774c8b9"
 
-    def test_git_lock_creation_rejects_dirty_critical_tracked_file(self):
+    PREVIOUSLY_OMITTED = (
+        "legged_controllers/include/legged_controllers/SafetyChecker.h",
+        "legged_controllers/legged_controllers_plugins.xml",
+        "legged_common/scripts/generate_urdf.sh",
+        "README.md",
+    )
+
+    def make_tracked_repository(self, module, source_root):
+        required = module.campaign_schema.SOURCE_LOCK_SENTINELS
+        tracked = tuple(dict.fromkeys((*required, *self.PREVIOUSLY_OMITTED)))
+        for relative in tracked:
+            path = source_root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("tracked: %s\n" % relative, encoding="utf-8")
+        subprocess.run(["git", "init"], cwd=source_root, check=True,
+                       capture_output=True)
+        subprocess.run(["git", "add", "."], cwd=source_root, check=True)
+        subprocess.run([
+            "git", "-c", "user.name=Test", "-c",
+            "user.email=test@example.com", "commit", "-m", "initial",
+        ], cwd=source_root, check=True, capture_output=True)
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=source_root,
+            text=True).strip()
+        return commit, tracked
+
+    def test_required_sentinels_cover_every_execution_category(self):
+        module = load_runner()
+        expected = {
+            "legged_controllers/src/LeggedController.cpp",
+            "legged_controllers/include/legged_controllers/SafetyChecker.h",
+            "legged_controllers/legged_controllers_plugins.xml",
+            "legged_common/scripts/generate_urdf.sh",
+            "legged_controllers/launch/myrbf_shadow_gazebo.launch",
+            "legged_controllers/scripts/record_stage8c.py",
+            "legged_controllers/scripts/record_myrbf_shadow.py",
+            "legged_controllers/scripts/run_myrbf_v5a_paired_campaign.py",
+            "legged_controllers/scripts/analyze_myrbf_v5a_paired.py",
+            "legged_controllers/config/go2/myrbf_shadow_v5a_go2.yaml",
+        }
+        self.assertTrue(expected.issubset(
+            set(module.campaign_schema.SOURCE_LOCK_SENTINELS)))
+
+    def test_git_lock_creation_hashes_exact_full_tracked_inventory(self):
         module = load_runner()
         with tempfile.TemporaryDirectory() as directory:
             source_root = Path(directory)
-            critical = source_root / "critical.txt"
-            critical.write_text("clean\n", encoding="utf-8")
-            subprocess.run(["git", "init"], cwd=source_root, check=True,
-                           capture_output=True)
-            subprocess.run(["git", "add", "critical.txt"], cwd=source_root,
-                           check=True)
-            subprocess.run([
-                "git", "-c", "user.name=Test", "-c",
-                "user.email=test@example.com", "commit", "-m", "initial",
-            ], cwd=source_root, check=True, capture_output=True)
-            commit = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=source_root,
-                text=True).strip()
-            critical.write_text("dirty\n", encoding="utf-8")
+            commit, tracked = self.make_tracked_repository(
+                module, source_root)
 
-            with mock.patch.object(
-                    module.campaign_schema, "EXECUTION_CRITICAL_FILES",
-                    ("critical.txt",)):
-                with self.assertRaisesRegex(ValueError, "dirty critical"):
-                    module.create_source_lock(source_root, commit)
+            source_lock = module.create_source_lock(source_root, commit)
+
+            self.assertEqual(set(source_lock["files"]), set(tracked))
+            for relative in self.PREVIOUSLY_OMITTED:
+                self.assertIn(relative, source_lock["files"])
+
+    def test_git_lock_creation_rejects_dirty_previously_omitted_tracked_file(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            source_root = Path(directory)
+            commit, _tracked = self.make_tracked_repository(
+                module, source_root)
+            dirty = source_root / self.PREVIOUSLY_OMITTED[0]
+            dirty.write_text("dirty\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "dirty tracked"):
+                module.create_source_lock(source_root, commit)
 
     def test_portable_lock_rejects_nonmapping_file_table_cleanly(self):
         module = load_runner()
         malformed = {
             "schema_version": module.campaign_schema.SOURCE_LOCK_VERSION,
             "source_commit": self.SOURCE_COMMIT,
-            "files": list(module.campaign_schema.EXECUTION_CRITICAL_FILES),
+            "files": list(module.campaign_schema.SOURCE_LOCK_SENTINELS),
         }
         with self.assertRaisesRegex(ValueError, "source-lock schema"):
             module._verify_source_lock(module.SOURCE_ROOT, malformed)
+
+    def test_portable_lock_requires_every_sentinel(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            source_root = Path(directory)
+            for relative in module.campaign_schema.SOURCE_LOCK_SENTINELS:
+                path = source_root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("locked: %s\n" % relative, encoding="utf-8")
+            lock_path = source_root / "source-lock.json"
+            source_lock = write_portable_source_lock(
+                module, source_root, lock_path, self.SOURCE_COMMIT)
+            missing = module.campaign_schema.SOURCE_LOCK_SENTINELS[-1]
+            del source_lock["files"][missing]
+
+            with self.assertRaisesRegex(ValueError, "source-lock schema"):
+                module._verify_source_lock(source_root, source_lock)
 
     def test_execution_uses_portable_lock_without_resolving_git(self):
         module = load_runner()
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
+            source_root = workspace / "portable-source"
+            for relative in module.campaign_schema.SOURCE_LOCK_SENTINELS:
+                path = source_root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("locked: %s\n" % relative, encoding="utf-8")
             protocol = workspace / "PROTOCOL.md"
             protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
             source_lock = workspace / "source-lock.json"
             write_portable_source_lock(
-                module, module.SOURCE_ROOT, source_lock, self.SOURCE_COMMIT)
+                module, source_root, source_lock, self.SOURCE_COMMIT)
             with mock.patch.object(
                     module.subprocess, "check_output",
                     side_effect=AssertionError("Git must not be resolved")):
@@ -880,6 +946,7 @@ class PortableSourceLockTest(unittest.TestCase):
                     protocol=protocol,
                     source_commit=self.SOURCE_COMMIT,
                     source_lock=source_lock,
+                    source_root=source_root,
                     process_runner=SuccessfulEvidenceProcess(),
                 )
             self.assertEqual(result, 0)
@@ -888,10 +955,11 @@ class PortableSourceLockTest(unittest.TestCase):
                     encoding="utf-8"))
             self.assertEqual(manifest["source_lock"]["source_commit"],
                              self.SOURCE_COMMIT)
-            self.assertEqual(set(manifest["source_lock"]["files"]), set(
-                module.campaign_schema.EXECUTION_CRITICAL_FILES))
+            self.assertTrue(set(
+                module.campaign_schema.SOURCE_LOCK_SENTINELS
+            ).issubset(manifest["source_lock"]["files"]))
 
-    def test_execution_rechecks_every_critical_hash_before_each_attempt(self):
+    def test_execution_rechecks_every_supplied_hash_before_each_attempt(self):
         module = load_runner()
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
@@ -899,6 +967,8 @@ class PortableSourceLockTest(unittest.TestCase):
             source_root.mkdir()
             critical = source_root / "critical.txt"
             critical.write_text("locked\n", encoding="utf-8")
+            extra = source_root / "extra.txt"
+            extra.write_text("also locked\n", encoding="utf-8")
             protocol = workspace / "PROTOCOL.md"
             protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
             source_lock = workspace / "source-lock.json"
@@ -906,14 +976,22 @@ class PortableSourceLockTest(unittest.TestCase):
             class DriftAfterFirstAttempt(SuccessfulEvidenceProcess):
                 def __call__(self, command, cwd, log_path, timeout_s):
                     result = super().__call__(command, cwd, log_path, timeout_s)
-                    critical.write_text("drifted\n", encoding="utf-8")
+                    extra.write_text("drifted\n", encoding="utf-8")
                     return result
 
             with mock.patch.object(
-                    module.campaign_schema, "EXECUTION_CRITICAL_FILES",
+                    module.campaign_schema, "SOURCE_LOCK_SENTINELS",
                     ("critical.txt",)):
                 write_portable_source_lock(
                     module, source_root, source_lock, self.SOURCE_COMMIT)
+                source_lock_data = json.loads(source_lock.read_text(
+                    encoding="utf-8"))
+                source_lock_data["files"]["extra.txt"] = hashlib.sha256(
+                    extra.read_bytes()).hexdigest()
+                source_lock.write_text(
+                    json.dumps(source_lock_data, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
                 process = DriftAfterFirstAttempt()
                 with self.assertRaisesRegex(ValueError, "source-lock drift"):
                     module.run_campaign(

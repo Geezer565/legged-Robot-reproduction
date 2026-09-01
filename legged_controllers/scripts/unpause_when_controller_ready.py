@@ -100,6 +100,7 @@ def main():
         "Go2 controller is running; shared campaign start %.9f published.",
         campaign_start,
     )
+    rospy.spin()
 
 
 if __name__ == "__main__":
