@@ -178,7 +178,7 @@ def launch_command_fixture(method, scenario, seed, run_id):
     }[method]
     return [
         "roslaunch", "legged_controllers", "myrbf_shadow_gazebo.launch",
-        "robot_type:=go2", "gui:=false", "seed:=%d" % seed,
+        "robot_type:=go2", "gui:=false", "gazebo_seed:=%d" % seed,
         "duration:=" + scenario_args["duration"],
         "state_output:=" + run_id + "/state.csv",
         "shadow_output:=" + run_id + "/shadow.csv",
@@ -478,7 +478,8 @@ class CampaignSchemaTest(unittest.TestCase):
         self.assertEqual(
             schema.expected_launch_arguments("V5-A", "sine_fy", 4103),
             {
-                "robot_type": "go2", "gui": "false", "seed": "4103",
+                "robot_type": "go2", "gui": "false",
+                "gazebo_seed": "4103",
                 "duration": "18.0", "enable_shadow": "true",
                 "enable_control_injection": "true", "control_gain": "0.1",
                 "control_force_limit": "3.0", "control_rate_limit": "5.0",
@@ -630,7 +631,7 @@ class CampaignValidationTest(unittest.TestCase):
         module = load_analyzer()
         mutations = (
             ("legged_controllers", "wrong_package"),
-            ("seed:=4101", "seed:=9999"),
+            ("gazebo_seed:=4101", "gazebo_seed:=9999"),
             ("myrbf_config:=myrbf_shadow_v4_go2.yaml",
              "myrbf_config:=myrbf_shadow_v5a_go2.yaml"),
             ("control_gain:=0.1", "control_gain:=0.2"),
@@ -646,6 +647,30 @@ class CampaignValidationTest(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError,
                                                 "launch command"):
                         module.validate_campaign(manifest, root)
+
+    # Production mutation caught: validating the seed under the unused
+    # seed:= name instead of the gazebo_seed:= argument forwarded to Gazebo.
+    def test_launch_command_requires_gazebo_seed_argument(self):
+        module = load_analyzer()
+        cases = (("gazebo_seed:=4101", True), ("seed:=4101", False))
+        for seed_argument, accepted in cases:
+            with self.subTest(seed_argument=seed_argument):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    command = manifest["runs"][0]["command"]
+                    command[command.index("gazebo_seed:=4101")] = seed_argument
+
+                    if accepted:
+                        try:
+                            module.validate_campaign(manifest, root)
+                        except ValueError as error:
+                            self.fail("gazebo_seed launch argument rejected: %s" %
+                                      error)
+                    else:
+                        with self.assertRaisesRegex(ValueError,
+                                                    "launch command"):
+                            module.validate_campaign(manifest, root)
 
     # Production mutation caught: comparing only declared pair settings and
     # accepting position, orientation, or velocity differences in recorded data.

@@ -241,7 +241,7 @@ def expected_launch_arguments(method, scenario, seed):
     spec = SCENARIOS[scenario]
     arguments = copy.deepcopy(COMMON_LAUNCH_ARGUMENTS)
     arguments.update({
-        "seed": str(seed),
+        "gazebo_seed": str(seed),
         "duration": str(spec["duration_s"]),
         "myrbf_config": METHOD_CONFIGS[method].rsplit("/", 1)[-1],
         "motion_gait": spec["gait"],
