@@ -9,7 +9,10 @@ import threading
 import rospy
 from std_msgs.msg import Float64, String
 
-from myrbf_campaign_timing import CAMPAIGN_START_TOPIC, campaign_elapsed
+from legged_controllers.myrbf_campaign_timing import (
+    CAMPAIGN_START_TOPIC,
+    campaign_elapsed,
+)
 
 
 LINK_NAMES = ("base", "LF_FOOT", "RF_FOOT", "LH_FOOT", "RH_FOOT")

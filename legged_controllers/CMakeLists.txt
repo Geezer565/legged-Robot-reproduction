@@ -25,6 +25,8 @@ find_package(catkin REQUIRED
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(pinocchio REQUIRED pinocchio)
 
+catkin_python_setup()
+
 catkin_package(
         INCLUDE_DIRS
         include
@@ -92,7 +94,6 @@ catkin_install_python(PROGRAMS
         scripts/analyze_m01_nodisturbance.py
         scripts/analyze_myrbf_v4_interface.py
         scripts/analyze_myrbf_campaign.py
-        scripts/myrbf_campaign_timing.py
         scripts/apply_myrbf_wrench.py
         scripts/publish_myrbf_motion.py
         scripts/record_myrbf_shadow.py

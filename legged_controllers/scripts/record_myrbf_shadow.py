@@ -5,7 +5,10 @@ import csv
 from pathlib import Path
 import threading
 
-from myrbf_campaign_timing import CAMPAIGN_START_TOPIC, campaign_elapsed
+from legged_controllers.myrbf_campaign_timing import (
+    CAMPAIGN_START_TOPIC,
+    campaign_elapsed,
+)
 
 
 AXES = ("fx_n", "fy_n", "fz_n", "tx_nm", "ty_nm", "tz_nm")

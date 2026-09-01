@@ -13,7 +13,7 @@ from gazebo_msgs.srv import GetJointProperties
 from std_msgs.msg import Float64
 from std_srvs.srv import Empty
 
-from myrbf_campaign_timing import (
+from legged_controllers.myrbf_campaign_timing import (
     CAMPAIGN_START_TOPIC,
     publish_campaign_start_when_running,
 )

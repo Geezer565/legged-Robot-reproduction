@@ -858,6 +858,10 @@ class PortableSourceLockTest(unittest.TestCase):
     def test_required_sentinels_cover_every_execution_category(self):
         module = load_runner()
         expected = {
+            "legged_controllers/CMakeLists.txt",
+            "legged_controllers/setup.py",
+            "legged_controllers/src/legged_controllers/__init__.py",
+            "legged_controllers/src/legged_controllers/myrbf_campaign_timing.py",
             "legged_controllers/src/LeggedController.cpp",
             "legged_controllers/include/legged_controllers/SafetyChecker.h",
             "legged_controllers/legged_controllers_plugins.xml",

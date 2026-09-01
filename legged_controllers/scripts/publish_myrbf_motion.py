@@ -5,7 +5,10 @@ import csv
 import math
 from pathlib import Path
 
-from myrbf_campaign_timing import CAMPAIGN_START_TOPIC, campaign_elapsed
+from legged_controllers.myrbf_campaign_timing import (
+    CAMPAIGN_START_TOPIC,
+    campaign_elapsed,
+)
 
 
 GAIT_TEMPLATES = {

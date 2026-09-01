@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
+import importlib
 import importlib.util
 from pathlib import Path
-import sys
 from types import SimpleNamespace
 import unittest
 from unittest import mock
 
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
-sys.path.insert(0, str(SCRIPTS))
 
 
 def load_script(name):
@@ -20,7 +19,38 @@ def load_script(name):
     return module
 
 
+def import_installed_timing():
+    return importlib.import_module(
+        "legged_controllers.myrbf_campaign_timing")
+
+
 class MyRbfCampaignTimingTest(unittest.TestCase):
+    # Production mutation caught: installing the helper only through
+    # catkin_install_python leaves no package-qualified module for fresh
+    # devel-space Python processes or installed timing consumers to import.
+    def test_installed_package_exports_complete_timing_contract(self):
+        try:
+            timing = import_installed_timing()
+        except ImportError as error:
+            self.fail("installed timing package is not importable: %s" % error)
+
+        published = []
+        start = timing.publish_campaign_start_when_running(
+            list_controller_state=lambda: "running",
+            publish_start=published.append,
+            ros_now=lambda: 100.0,
+            sleep=lambda _seconds: None,
+            is_shutdown=lambda: False,
+            timeout_s=30.0,
+            monotonic_now=iter((0.0, 1.0)).__next__,
+        )
+
+        self.assertEqual(timing.CAMPAIGN_START_TOPIC,
+                         "/myrbf_campaign_start")
+        self.assertEqual(start, 100.0)
+        self.assertEqual(published, [100.0])
+        self.assertEqual(timing.campaign_elapsed(106.0, 100.0), 6.0)
+
     def test_delayed_controller_readiness_publishes_one_shared_ros_start(self):
         unpause = load_script("unpause_when_controller_ready")
         states = iter(("initialized", "initialized", "running"))
@@ -105,7 +135,7 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
             load_script("publish_myrbf_motion"),
             load_script("apply_myrbf_wrench"),
         ]
-        timing = sys.modules["myrbf_campaign_timing"]
+        timing = import_installed_timing()
         campaign_start_ros = 100.0
 
         for module in modules:
