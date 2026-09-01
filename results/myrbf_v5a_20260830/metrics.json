@@ -1,0 +1,107 @@
+{
+  "run_date": "2026-09-01",
+  "status": "single_run_gate_passed",
+  "paper_claim_ready": false,
+  "replay": {
+    "datasets": ["undisturbed_walk", "sine_fy", "multisine_fy"],
+    "sample_count": 26971,
+    "all_finite": true,
+    "maximum_freeze_rate": 0.000647668,
+    "maximum_weight_limit_ratio": 0.180556
+  },
+  "seed_v5a": {
+    "description": "Original V4 gains copied directly despite normalized update",
+    "undisturbed_closed_loop": {
+      "lateral_rmse_cm": 0.0024071095052809743,
+      "roll_rmse_deg": 0.027485264797712825,
+      "applied_force_rms_n": 0.042481774191113104,
+      "minimum_base_z_m": 0.33186799543700307,
+      "freeze_rate": 0.0006958942240779402
+    },
+    "constant_fy": {
+      "estimate_rmse_n": 17.653450472004796,
+      "lateral_rms_cm": 27.84769207205172,
+      "roll_rms_deg": 1.9227113717245357,
+      "mean_abs_applied_n": 0.2984990801347432,
+      "freeze_rate": 0.0
+    },
+    "sine_fy": {
+      "estimate_rmse_n": 10.38576380265761,
+      "correlation": 0.685582820004111,
+      "lateral_rms_cm": 2.6755435516724537,
+      "roll_rms_deg": 0.98366317096907,
+      "mean_abs_applied_n": 0.06468383680549177,
+      "freeze_rate": 0.0
+    }
+  },
+  "normalization_scale_median": {
+    "fx": 1108.3308359626637,
+    "fy": 1148.5767694330557,
+    "fz": 1006.4765927569608,
+    "tx": 17.886518816136352,
+    "ty": 97.88953663292276,
+    "tz": 9.758563765931305
+  },
+  "tuned_prediction_gain": {
+    "fx": 1.1128639,
+    "fy": 57.4288385,
+    "fz": 1.1130021,
+    "tx": 1.1134769,
+    "ty": 0.3915581,
+    "tz": 1.1135009
+  },
+  "tuned_v5a_undisturbed_closed_loop": {
+    "position_rmse_cm": 0.005255827771040725,
+    "lateral_rmse_cm": 0.0022561156872103814,
+    "roll_rmse_deg": 0.02597582474461259,
+    "applied_force_rms_n": 0.782174511219795,
+    "applied_force_max_n": 2.0149648829911757,
+    "minimum_base_z_m": 0.33198512421165793,
+    "freeze_rate": 0.0006578947368421052,
+    "safety_exit": false
+  },
+  "matched_constant_fy": {
+    "v4": {
+      "estimate_rmse_n": 5.978755725215566,
+      "lateral_rms_cm": 19.800683057724356,
+      "roll_rms_deg": 1.6004135932637054,
+      "mean_abs_applied_n": 2.7570200863214467
+    },
+    "v5a": {
+      "estimate_rmse_n": 5.469399368596161,
+      "lateral_rms_cm": 23.53710395706795,
+      "roll_rms_deg": 1.6537495020506663,
+      "mean_abs_applied_n": 2.683837425047601,
+      "freeze_rate": 0.0
+    }
+  },
+  "matched_sine_fy": {
+    "v4": {
+      "estimate_rmse_n": 3.8020083455351807,
+      "correlation": 0.9345503645665666,
+      "lateral_rms_cm": 3.6671695963322244,
+      "roll_rms_deg": 0.8855863073255884,
+      "mean_abs_applied_n": 2.0388632280876817
+    },
+    "v5a": {
+      "estimate_rmse_n": 3.8067303112645043,
+      "correlation": 0.9354454628810821,
+      "lateral_rms_cm": 2.5944932191220804,
+      "roll_rms_deg": 0.8827205057941695,
+      "mean_abs_applied_n": 2.0577113211142435,
+      "freeze_rate": 0.0
+    },
+    "rmse_change_percent": 0.124196621,
+    "lateral_rms_improvement_percent": 29.256262,
+    "roll_rms_improvement_percent": 0.323597
+  },
+  "acceptance": {
+    "standing_safety_preserved": true,
+    "sine_rmse_increase_below_10_percent": true,
+    "sine_lateral_or_roll_improved_without_other_worsening_over_5_percent": true,
+    "constant_case_not_degraded": false,
+    "single_run_gate": "pass",
+    "advance_to_repeated_validation": true,
+    "advance_to_paper_claim": false
+  }
+}
