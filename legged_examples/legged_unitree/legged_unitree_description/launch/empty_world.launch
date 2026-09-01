@@ -2,6 +2,7 @@
     <arg name="robot_type" default="$(env ROBOT_TYPE)" doc="Robot type: [a1, aliengo, go1, laikago, go2]"/>
     <arg name="paused" default="false"/>
     <arg name="gui" default="true"/>
+    <arg name="extra_gazebo_args" default=""/>
 
     <param name="legged_robot_description" command="$(find xacro)/xacro $(find legged_unitree_description)/urdf/robot.xacro
        robot_type:=$(arg robot_type)
@@ -14,6 +15,7 @@
         <arg name="world_name" value="$(find legged_gazebo)/worlds/empty_world.world"/>
         <arg name="paused" value="$(arg paused)"/>
         <arg name="gui" value="$(arg gui)"/>
+        <arg name="extra_gazebo_args" value="$(arg extra_gazebo_args)"/>
     </include>
     <!-- push robot_description to factory and spawn robot in gazebo -->
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" clear_params="true"

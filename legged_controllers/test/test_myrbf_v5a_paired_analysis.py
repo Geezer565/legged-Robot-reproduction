@@ -219,7 +219,7 @@ def build_complete_campaign(root):
         start_ros = 100.0
         shadow_rows = []
         state_rows = [{
-            "ros_time": "99.75",
+            "ros_time": "99.75", "wall_elapsed": "-0.25",
             "base_x": "nan", "base_y": "nan", "base_z": "nan",
             "observation_base_yaw": "nan",
             "observation_base_pitch": "nan",
@@ -261,6 +261,7 @@ def build_complete_campaign(root):
             })
             state_rows.append({
                 "ros_time": "%.2f" % ros_time,
+                "wall_elapsed": "%.2f" % elapsed,
                 "base_x": "0.0", "base_y": "%.6f" % (2.0 + response),
                 "base_z": "0.34",
                 "observation_base_yaw": "0.0",
@@ -290,6 +291,8 @@ def build_complete_campaign(root):
         write_csv(run_dir / "state.csv", tuple(state_rows[0]), state_rows)
         write_csv(run_dir / "wrench.csv", tuple(wrench_rows[0]), wrench_rows)
         write_csv(run_dir / "motion.csv", tuple(motion_rows[0]), motion_rows)
+        (run_dir / "run.log").write_text(
+            "campaign process completed\n", encoding="utf-8")
         runs.append({
             "run_id": run_id,
             "method": method,
@@ -311,9 +314,30 @@ def build_complete_campaign(root):
             "finite": True,
             "safety_stop_detected": False,
             "complete": True,
+            "output_dir": run_id,
+            "attempt_history": [],
+            "observed_spans": {
+                "controller": {
+                    "rows": len(shadow_rows), "start_s": 100.0,
+                    "stop_s": 100.0 + duration, "span_s": duration,
+                },
+                "estimator": {
+                    "rows": len(state_rows) - 1, "start_s": 0.0,
+                    "stop_s": duration, "span_s": duration,
+                },
+                "motion": {
+                    "rows": len(motion_rows), "start_s": 0.0,
+                    "stop_s": duration, "span_s": duration,
+                },
+                "wrench": {
+                    "rows": len(wrench_rows), "start_s": 0.0,
+                    "stop_s": duration, "span_s": duration,
+                },
+            },
         })
     manifest = {
         "schema_version": schema.SCHEMA_VERSION,
+        "protocol_sha256": schema.FROZEN_PROTOCOL_SHA256,
         "protocol_snapshot": schema.protocol_snapshot(),
         "runs": runs,
     }
@@ -431,14 +455,16 @@ class CampaignSchemaTest(unittest.TestCase):
                 "roll_rms_ratio": 1.05,
             },
         })
-        self.assertEqual(schema.REQUIRED_MANIFEST_FIELDS,
-                         ("schema_version", "protocol_snapshot", "runs"))
+        self.assertEqual(schema.REQUIRED_MANIFEST_FIELDS, (
+            "schema_version", "protocol_sha256", "protocol_snapshot", "runs",
+        ))
         self.assertEqual(schema.REQUIRED_RUN_FIELDS, (
             "run_id", "method", "scenario", "repeat", "seed", "order",
             "paired_conditions", "git_commit", "config_path",
             "config_sha256", "command",
             "started_at", "finished_at", "exit_code", "controller_rows",
             "estimator_rows", "finite", "safety_stop_detected", "complete",
+            "output_dir", "attempt_history", "observed_spans",
         ))
         self.assertEqual(schema.paired_conditions("sine_fy", 4103), {
             "scenario": "sine_fy", "seed": 4103, "duration_s": 18.0,
@@ -452,7 +478,8 @@ class CampaignSchemaTest(unittest.TestCase):
         })
         self.assertEqual(schema.REQUIRED_CSV_FIELDS["state.csv"],
                          (
-                             "ros_time", "base_x", "base_y", "base_z",
+                             "ros_time", "wall_elapsed",
+                             "base_x", "base_y", "base_z",
                              "observation_base_yaw",
                              "observation_base_pitch",
                              "observation_base_roll",
@@ -505,6 +532,20 @@ class CampaignSchemaTest(unittest.TestCase):
         ])
         self.assertEqual(snapshot["initial_state_tolerances"],
                          schema.INITIAL_STATE_TOLERANCES)
+
+    # Production mutation caught: runner/analyzer using a shorter accepted
+    # recording span or recognizing different safety-stop messages.
+    def test_full_run_coverage_and_safety_markers_are_shared_exactly(self):
+        schema = load_schema()
+
+        self.assertEqual(schema.FULL_RUN_COVERAGE, {
+            "start_margin_fraction": 0.05,
+            "minimum_span_fraction": 0.95,
+        })
+        self.assertEqual(schema.SAFETY_STOP_MARKERS, (
+            "[SafetyChecker] Orientation safety check failed!",
+            "[Legged Controller] Safety check failed, stopping the controller.",
+        ))
 
 
 class OnsetRelativeMotionTest(unittest.TestCase):
@@ -737,6 +778,24 @@ class CampaignValidationTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError,
                                         "safety_stop_detected.*boolean"):
+                module.validate_campaign(manifest, root)
+
+    # Production mutation caught: trusting safety_stop_detected=false instead
+    # of independently scanning the preserved process log case-insensitively.
+    def test_analyzer_rejects_safety_marker_hidden_by_manifest(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][0]
+            self.assertFalse(run["safety_stop_detected"])
+            (root / run["output_dir"] / "run.log").write_text(
+                "[lEgGeD cOnTrOlLeR] sAfEtY cHeCk FaIlEd, "
+                "sToPpInG tHe CoNtRoLlEr.\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "safety-stop marker"):
                 module.validate_campaign(manifest, root)
 
     # Production mutation caught: rejecting valid retained extra columns or
@@ -1138,8 +1197,8 @@ class CampaignValidationTest(unittest.TestCase):
                 module.analyze_run(run, root)
 
     # Production mutation caught: pairing controller and estimator streams that
-    # share only a short fragment of the requested response window.
-    def test_controller_estimator_overlap_below_95_percent_is_rejected(self):
+    # share only a short fragment because one full-run record is incomplete.
+    def test_short_controller_estimator_overlap_is_rejected_as_incomplete(self):
         module = load_analyzer()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1153,7 +1212,7 @@ class CampaignValidationTest(unittest.TestCase):
                     or float(row["ros_time"]) <= 110.0]
             write_csv(path, tuple(rows[0]), rows)
 
-            with self.assertRaisesRegex(ValueError, "timestamp overlap"):
+            with self.assertRaisesRegex(ValueError, "full-run coverage"):
                 module.analyze_run(run, root)
 
     # Production mutation caught: using endpoint extrapolation when requested
@@ -1274,6 +1333,99 @@ class CampaignValidationTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,
                                         "state times.*excessive gap"):
                 module.analyze_run(run, root)
+
+    # Production mutation caught: validating only the force/motion analysis
+    # window and accepting controller/state evidence truncated at either end.
+    def test_analyze_run_rejects_truncated_full_duration_streams(self):
+        module = load_analyzer()
+        mutations = (
+            ("shadow.csv", "time_s", "start"),
+            ("shadow.csv", "time_s", "end"),
+            ("state.csv", "ros_time", "start"),
+            ("state.csv", "ros_time", "end"),
+        )
+        for filename, time_field, edge in mutations:
+            with self.subTest(filename=filename, edge=edge):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    run = next(item for item in manifest["runs"]
+                               if item["scenario"] == "constant_fy")
+                    path = root / run["run_id"] / filename
+                    rows = read_csv(path)
+                    finite_rows = [row for row in rows
+                                   if row[time_field].lower() != "nan"]
+                    boundary = (
+                        float(finite_rows[0][time_field]) + 1.25
+                        if edge == "start"
+                        else float(finite_rows[-1][time_field]) - 1.25
+                    )
+                    retained = []
+                    for row in rows:
+                        try:
+                            sample_time = float(row[time_field])
+                        except ValueError:
+                            retained.append(row)
+                            continue
+                        if ((edge == "start" and sample_time >= boundary) or
+                                (edge == "end" and sample_time <= boundary)):
+                            retained.append(row)
+                    write_csv(path, tuple(rows[0]), retained)
+
+                    with self.assertRaisesRegex(
+                            ValueError, "full-run coverage"):
+                        module.analyze_run(run, root)
+
+    # Production mutation caught: trusting claimed row counts/spans instead of
+    # independently recomputing them from the evidence files.
+    def test_manifest_row_and_span_claims_must_match_evidence(self):
+        module = load_analyzer()
+        mutations = (
+            ("controller_rows", 999),
+            ("estimator_rows", 999),
+            ("controller_span_s", 99.0),
+            ("motion_span_s", 99.0),
+        )
+        for field, value in mutations:
+            with self.subTest(field=field):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    run = manifest["runs"][0]
+                    if field.endswith("_rows"):
+                        run[field] = value
+                    else:
+                        stream = field.split("_", 1)[0]
+                        run["observed_spans"][stream]["span_s"] = value
+
+                    with self.assertRaisesRegex(ValueError,
+                                                "row/span claims"):
+                        module.validate_campaign(manifest, root)
+
+    # Production mutation caught: checking span only and accepting a complete-
+    # length stream that starts after the shared 5% startup allowance.
+    def test_analyze_run_rejects_streams_starting_after_margin(self):
+        module = load_analyzer()
+        mutations = (("shadow.csv", "time_s"),
+                     ("state.csv", "wall_elapsed"))
+        for filename, field in mutations:
+            with self.subTest(filename=filename):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    run = next(item for item in manifest["runs"]
+                               if item["scenario"] == "constant_fy")
+                    path = root / run["run_id"] / filename
+                    rows = read_csv(path)
+                    for row in rows:
+                        try:
+                            row[field] = "%.2f" % (float(row[field]) + 1.0)
+                        except ValueError:
+                            pass
+                    write_csv(path, tuple(rows[0]), rows)
+
+                    with self.assertRaisesRegex(ValueError, "start margin"):
+                        module.analyze_run(run, root)
 
     # Production mutation caught: computing the gate-facing freeze rate only
     # inside the disturbance window and hiding frozen updates earlier in a run.

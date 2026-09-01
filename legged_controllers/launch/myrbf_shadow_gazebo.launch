@@ -3,6 +3,7 @@
 <launch>
     <arg name="robot_type" default="go2"/>
     <arg name="gui" default="false"/>
+    <arg name="gazebo_seed" default="0"/>
     <arg name="duration" default="15.0"/>
     <arg name="state_output" default="/tmp/myrbf_go2_state.csv"/>
     <arg name="shadow_output" default="/tmp/myrbf_go2_shadow.csv"/>
@@ -50,6 +51,7 @@
         <arg name="robot_type" value="$(arg robot_type)"/>
         <arg name="paused" value="true"/>
         <arg name="gui" value="$(arg gui)"/>
+        <arg name="extra_gazebo_args" value="--seed $(arg gazebo_seed)"/>
     </include>
     <include file="$(find legged_controllers)/launch/load_controller.launch">
         <arg name="robot_type" value="$(arg robot_type)"/>

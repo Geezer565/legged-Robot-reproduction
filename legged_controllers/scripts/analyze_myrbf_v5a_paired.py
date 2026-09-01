@@ -15,7 +15,6 @@ import myrbf_v5a_campaign_schema as campaign_schema
 
 MIN_DISTURBANCE_SAMPLES = 10
 MIN_STREAM_OVERLAP = 0.95
-MAX_SAMPLE_GAP_FACTOR = 3.0
 FORCE_TOLERANCE_N = 1e-6
 COMMAND_TOLERANCE = 1e-9
 PAIRED_METRICS = (
@@ -208,12 +207,93 @@ def _validate_paired_initial_state(reference, candidate):
             raise ValueError("recorded initial state differs within pair")
 
 
+def _span_claim(rows, field):
+    start = rows[0][field]
+    stop = rows[-1][field]
+    return {
+        "rows": len(rows),
+        "start_s": start,
+        "stop_s": stop,
+        "span_s": stop - start,
+    }
+
+
+def _claims_match(recorded, observed):
+    if not isinstance(recorded, dict) or set(recorded) != set(observed):
+        return False
+    for field in ("rows", "start_s", "stop_s", "span_s"):
+        if field not in recorded:
+            return False
+        if field == "rows":
+            if recorded[field] != observed[field]:
+                return False
+        else:
+            try:
+                difference = abs(float(recorded[field]) - observed[field])
+            except (TypeError, ValueError):
+                return False
+            if difference > 1e-9:
+                return False
+    return True
+
+
+def _validate_row_span_claims(run, directory, state):
+    shadow = _read_csv(
+        directory / "shadow.csv",
+        campaign_schema.REQUIRED_CSV_FIELDS["shadow.csv"],
+    )
+    motion = _read_csv(
+        directory / "motion.csv",
+        campaign_schema.REQUIRED_CSV_FIELDS["motion.csv"],
+        string_fields=("gait",),
+    )
+    wrench_path = directory / "wrench.csv"
+    wrench = None
+    if wrench_path.is_file():
+        wrench = _read_csv(
+            wrench_path,
+            campaign_schema.REQUIRED_CSV_FIELDS["wrench.csv"],
+        )
+    observed = {
+        "controller": _span_claim(shadow, "time_s"),
+        "estimator": _span_claim(state, "wall_elapsed"),
+        "motion": _span_claim(motion, "wall_elapsed"),
+        "wrench": (_span_claim(wrench, "wall_elapsed")
+                   if wrench is not None else None),
+    }
+    recorded = run["observed_spans"]
+    if (not isinstance(recorded, dict) or
+            set(recorded) != set(campaign_schema.OBSERVED_STREAMS)):
+        raise ValueError("run row/span claims do not match evidence")
+    if (run["controller_rows"] != observed["controller"]["rows"] or
+            run["estimator_rows"] != observed["estimator"]["rows"]):
+        raise ValueError("run row/span claims do not match evidence")
+    for stream in campaign_schema.OBSERVED_STREAMS:
+        if observed[stream] is None:
+            if recorded[stream] is not None:
+                raise ValueError("run row/span claims do not match evidence")
+        elif not _claims_match(recorded[stream], observed[stream]):
+            raise ValueError("run row/span claims do not match evidence")
+
+
+def _validate_safety_log(directory):
+    path = directory / "run.log"
+    if not path.is_file():
+        raise ValueError("preserved run.log is missing")
+    text = path.read_text(encoding="utf-8", errors="replace").lower()
+    if any(marker.lower() in text
+           for marker in campaign_schema.SAFETY_STOP_MARKERS):
+        raise ValueError("recognized safety-stop marker found in run.log")
+
+
 def validate_campaign(manifest, root):
     missing = _missing_fields(manifest, campaign_schema.REQUIRED_MANIFEST_FIELDS)
     if missing:
         raise ValueError("manifest missing required fields: %s" % ", ".join(missing))
     if manifest["schema_version"] != campaign_schema.SCHEMA_VERSION:
         raise ValueError("manifest schema version mismatch")
+    if manifest["protocol_sha256"] != campaign_schema.FROZEN_PROTOCOL_SHA256:
+        raise ValueError("manifest protocol SHA-256 mismatch")
     expected_snapshot = campaign_schema.protocol_snapshot()
     if manifest["protocol_snapshot"] != expected_snapshot:
         raise ValueError("protocol snapshot does not match frozen campaign schema")
@@ -291,11 +371,13 @@ def validate_campaign(manifest, root):
         directory = _run_directory(root, run)
         if not directory.is_dir():
             raise ValueError("run directory is missing: %s" % run["run_id"])
+        _validate_safety_log(directory)
         state = _read_csv(
             directory / "state.csv",
             campaign_schema.REQUIRED_CSV_FIELDS["state.csv"],
             skip_leading_nonfinite=True,
         )
+        _validate_row_span_claims(run, directory, state)
         initial_state = state[0]
         if pair_key in pair_initial_states:
             _validate_paired_initial_state(
@@ -380,8 +462,27 @@ def _validate_stream_continuity(rows, field, label):
     differences = [right[field] - left[field]
                    for left, right in zip(rows, rows[1:])]
     period = float(np.median(np.asarray(differences, dtype=float)))
-    if max(differences) > MAX_SAMPLE_GAP_FACTOR * period + 1e-12:
+    if (max(differences) >
+            campaign_schema.MAX_SAMPLE_GAP_FACTOR * period + 1e-12):
         raise ValueError("%s has an excessive gap" % label)
+
+
+def _validate_full_run_coverage(rows, field, duration, label, start_elapsed):
+    allowed_start = (
+        duration *
+        campaign_schema.FULL_RUN_COVERAGE["start_margin_fraction"]
+    )
+    if abs(start_elapsed) > allowed_start + 1e-12:
+        raise ValueError(
+            "%s full-run coverage start margin is exceeded" % label)
+    observed_span = rows[-1][field] - rows[0][field]
+    required_span = (
+        duration *
+        campaign_schema.FULL_RUN_COVERAGE["minimum_span_fraction"]
+    )
+    if observed_span + 1e-12 < required_span:
+        raise ValueError("%s full-run coverage is below the shared minimum" %
+                         label)
 
 
 def _validate_schedule_coverage(rows, start, stop, label):
@@ -395,7 +496,8 @@ def _validate_schedule_coverage(rows, start, stop, label):
     period = float(np.median(np.asarray(differences, dtype=float)))
     if wall_times[0] > start or wall_times[-1] < stop:
         raise ValueError("%s does not cover the frozen window" % label)
-    if max(differences) > MAX_SAMPLE_GAP_FACTOR * period + 1e-12:
+    if (max(differences) >
+            campaign_schema.MAX_SAMPLE_GAP_FACTOR * period + 1e-12):
         raise ValueError("%s is disjoint inside the frozen window" % label)
     ros_times = [row["ros_time"] for row in rows]
     ros_differences = [right - left
@@ -403,7 +505,8 @@ def _validate_schedule_coverage(rows, start, stop, label):
     if any(value <= 0.0 for value in ros_differences):
         raise ValueError("%s must have strictly increasing ROS times" % label)
     ros_period = float(np.median(np.asarray(ros_differences, dtype=float)))
-    if max(ros_differences) > MAX_SAMPLE_GAP_FACTOR * ros_period + 1e-12:
+    if (max(ros_differences) >
+            campaign_schema.MAX_SAMPLE_GAP_FACTOR * ros_period + 1e-12):
         raise ValueError("%s has an excessive ROS-time gap" % label)
     return tuple(_nearest_values(
         [start, stop], rows, "wall_elapsed", "ros_time"))
@@ -527,6 +630,7 @@ def _longest_saturation_duration(times, allocator):
 
 def analyze_run(run, root):
     directory = _run_directory(root, run)
+    _validate_safety_log(directory)
     scenario = run["scenario"]
     scenario_spec = campaign_schema.SCENARIOS[scenario]
     shadow = _read_csv(
@@ -542,6 +646,14 @@ def analyze_run(run, root):
     _validate_strictly_increasing(state, "ros_time", "state times")
     _validate_stream_continuity(shadow, "time_s", "controller times")
     _validate_stream_continuity(state, "ros_time", "state times")
+    state_start_elapsed = state[0]["wall_elapsed"]
+    ros_origin = state[0]["ros_time"] - state_start_elapsed
+    _validate_full_run_coverage(
+        shadow, "time_s", scenario_spec["duration_s"], "controller",
+        shadow[0]["time_s"] - ros_origin)
+    _validate_full_run_coverage(
+        state, "ros_time", scenario_spec["duration_s"], "state",
+        state_start_elapsed)
     motion = _read_csv(
         directory / "motion.csv",
         campaign_schema.REQUIRED_CSV_FIELDS["motion.csv"],

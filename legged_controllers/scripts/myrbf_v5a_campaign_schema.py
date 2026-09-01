@@ -25,6 +25,17 @@ LAUNCH_PREFIX = (
 LAUNCH_OUTPUT_ARGUMENTS = (
     "state_output", "shadow_output", "wrench_output", "motion_output",
 )
+LAUNCH_ARGUMENT_ORDER = (
+    "robot_type", "gui", "gazebo_seed", "duration",
+    "state_output", "shadow_output", "wrench_output", "motion_output",
+    "enable_shadow", "enable_control_injection", "control_gain",
+    "control_force_limit", "control_rate_limit", "myrbf_config",
+    "enable_motion", "motion_gait", "motion_vx", "motion_vy",
+    "motion_yaw_rate", "motion_delay", "motion_duration",
+    "enable_wrench", "wrench_profile", "wrench_axis", "wrench_value",
+    "wrench_amplitude", "wrench_frequency", "wrench_secondary_amplitude",
+    "wrench_secondary_frequency", "wrench_delay", "wrench_duration",
+)
 COMMON_LAUNCH_ARGUMENTS = {
     "robot_type": "go2",
     "gui": "false",
@@ -52,6 +63,15 @@ INITIAL_ORIENTATION_FIELDS = (
     "observation_base_yaw",
     "observation_base_pitch",
     "observation_base_roll",
+)
+FULL_RUN_COVERAGE = {
+    "start_margin_fraction": 0.05,
+    "minimum_span_fraction": 0.95,
+}
+MAX_SAMPLE_GAP_FACTOR = 3.0
+SAFETY_STOP_MARKERS = (
+    "[SafetyChecker] Orientation safety check failed!",
+    "[Legged Controller] Safety check failed, stopping the controller.",
 )
 
 SCENARIOS = {
@@ -140,7 +160,9 @@ GATE_THRESHOLDS = {
     },
 }
 
-REQUIRED_MANIFEST_FIELDS = ("schema_version", "protocol_snapshot", "runs")
+REQUIRED_MANIFEST_FIELDS = (
+    "schema_version", "protocol_sha256", "protocol_snapshot", "runs",
+)
 REQUIRED_RUN_FIELDS = (
     "run_id",
     "method",
@@ -161,7 +183,11 @@ REQUIRED_RUN_FIELDS = (
     "finite",
     "safety_stop_detected",
     "complete",
+    "output_dir",
+    "attempt_history",
+    "observed_spans",
 )
+OBSERVED_STREAMS = ("controller", "estimator", "motion", "wrench")
 
 REQUIRED_CSV_FIELDS = {
     "shadow.csv": (
@@ -182,6 +208,7 @@ REQUIRED_CSV_FIELDS = {
     ),
     "state.csv": (
         "ros_time",
+        "wall_elapsed",
         "base_x",
         "base_y",
         "base_z",
@@ -264,6 +291,15 @@ def expected_launch_arguments(method, scenario, seed):
     return arguments
 
 
+def ordered_launch_arguments(method, scenario, seed, output_arguments):
+    if set(output_arguments) != set(LAUNCH_OUTPUT_ARGUMENTS):
+        raise ValueError("launch output arguments do not match frozen schema")
+    arguments = expected_launch_arguments(method, scenario, seed)
+    arguments.update({name: str(output_arguments[name])
+                      for name in LAUNCH_OUTPUT_ARGUMENTS})
+    return [(name, arguments[name]) for name in LAUNCH_ARGUMENT_ORDER]
+
+
 def protocol_snapshot():
     methods = {
         method: {
@@ -291,7 +327,11 @@ def protocol_snapshot():
         "launch": {
             "prefix": list(LAUNCH_PREFIX),
             "output_arguments": list(LAUNCH_OUTPUT_ARGUMENTS),
+            "argument_order": list(LAUNCH_ARGUMENT_ORDER),
             "common_arguments": COMMON_LAUNCH_ARGUMENTS,
         },
         "initial_state_tolerances": INITIAL_STATE_TOLERANCES,
+        "full_run_coverage": FULL_RUN_COVERAGE,
+        "maximum_sample_gap_factor": MAX_SAMPLE_GAP_FACTOR,
+        "safety_stop_markers": list(SAFETY_STOP_MARKERS),
     })
