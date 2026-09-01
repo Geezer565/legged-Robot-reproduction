@@ -212,18 +212,28 @@ MyRbfShadowStepResult MyRbfShadowEstimator::step(
         result.weightDerivative(0, axis) +=
             updateGate * settings_.trackingGain(axis) * sigma(axis) *
             biasGradient;
+        result.trackingBiasDerivative(axis) =
+            updateGate * settings_.trackingGain(axis) * sigma(axis) *
+            biasGradient;
       } else {
         result.weightDerivative.col(axis) +=
             updateGate * settings_.trackingGain(axis) * sigma(axis) *
             updateGradient;
+        result.trackingBiasDerivative(axis) =
+            updateGate * settings_.trackingGain(axis) * sigma(axis) *
+            updateGradient(0);
       }
 
-      result.weightDerivative.col(axis) +=
+      const vector_t predictionDerivative =
           updateGate * settings_.predictionGain(axis) * predictionError(axis) *
           updateGradient;
+      result.weightDerivative.col(axis) += predictionDerivative;
+      result.predictionDerivativeNorm(axis) = predictionDerivative.norm();
     }
-    result.weightDerivative.col(axis) -=
+    const vector_t leakageDerivative =
         settings_.leakage(axis) * weights_.col(axis);
+    result.weightDerivative.col(axis) -= leakageDerivative;
+    result.leakageDerivativeNorm(axis) = leakageDerivative.norm();
   }
 
   result.weightsAfterUpdate = weights_ + dt * result.weightDerivative;
@@ -234,6 +244,8 @@ MyRbfShadowStepResult MyRbfShadowEstimator::step(
   for (Eigen::Index axis = 0; axis < kAxisCount; ++axis) {
     const scalar_t limit = settings_.weightLimit(axis);
     if (std::isfinite(limit)) {
+      result.projectionActive[static_cast<std::size_t>(axis)] =
+          result.weightsAfterUpdate.col(axis).cwiseAbs().maxCoeff() > limit;
       result.weightsAfterUpdate.col(axis) =
           result.weightsAfterUpdate.col(axis).cwiseMax(-limit).cwiseMin(limit);
     }

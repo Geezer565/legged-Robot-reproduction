@@ -142,6 +142,124 @@ TEST(MyRbfShadowEstimator, ProjectionBoundsEveryWeight) {
 
   EXPECT_LE(result.weightsAfterUpdate.cwiseAbs().maxCoeff(), 0.05 + 1e-12);
   EXPECT_NEAR(result.weightsAfterUpdate(0, 0), 0.05, 1e-12);
+  EXPECT_TRUE(result.projectionActive[1]);
+}
+
+TEST(MyRbfShadowEstimator, SeparatesPredictionTrackingAndLeakageDiagnostics) {
+  auto predictionSettings = makeSettings();
+  predictionSettings.trackingGain.setZero();
+  predictionSettings.leakage.setZero();
+  MyRbfShadowEstimator predictionOnly(predictionSettings);
+  const auto prediction = predictionOnly.step(vector6_t::Constant(2.0),
+                                               vector6_t::Zero(), 0.0);
+  EXPECT_GT(prediction.predictionDerivativeNorm(1), 0.0);
+  EXPECT_DOUBLE_EQ(prediction.trackingBiasDerivative(1), 0.0);
+  EXPECT_DOUBLE_EQ(prediction.leakageDerivativeNorm(1), 0.0);
+
+  auto trackingSettings = makeSettings();
+  trackingSettings.predictionGain.setZero();
+  trackingSettings.trackingGain = vector6_t::Constant(2.0);
+  trackingSettings.trackingBiasOnly = true;
+  MyRbfShadowEstimator trackingOnly(trackingSettings);
+  const auto tracking = trackingOnly.step(vector6_t::Zero(),
+                                           vector6_t::Constant(0.5), 0.0);
+  EXPECT_NE(tracking.trackingBiasDerivative(1), 0.0);
+  EXPECT_DOUBLE_EQ(tracking.predictionDerivativeNorm(1), 0.0);
+  EXPECT_DOUBLE_EQ(tracking.leakageDerivativeNorm(1), 0.0);
+
+  auto leakageSettings = makeSettings();
+  leakageSettings.predictionGain.setZero();
+  leakageSettings.trackingGain = vector6_t::Ones();
+  leakageSettings.leakage = vector6_t::Constant(0.5);
+  MyRbfShadowEstimator leakageOnly(leakageSettings);
+  leakageOnly.step(vector6_t::Zero(), vector6_t::Ones(), 0.1);
+  const auto leakage = leakageOnly.step(vector6_t::Zero(),
+                                         vector6_t::Zero(), 0.0);
+  EXPECT_GT(leakage.leakageDerivativeNorm(1), 0.0);
+  EXPECT_DOUBLE_EQ(leakage.predictionDerivativeNorm(1), 0.0);
+  EXPECT_DOUBLE_EQ(leakage.trackingBiasDerivative(1), 0.0);
+}
+
+TEST(MyRbfShadowEstimator, DiagnosticsLeaveTheFrozenUpdateEquationUnchanged) {
+  auto settings = makeSettings();
+  settings.outputScale << 1.0, 1.2, 0.8, 1.5, 0.9, 1.1;
+  settings.trackingGain = vector6_t::Constant(0.7);
+  settings.predictionGain = vector6_t::Constant(1.3);
+  settings.leakage = vector6_t::Constant(0.04);
+  settings.normalizeUpdate = true;
+  settings.trackingBiasOnly = true;
+  settings.updateEpsilon = 0.2;
+  settings.weightLimit = vector6_t::Constant(0.35);
+  MyRbfShadowEstimator estimator(settings);
+
+  matrix_t expectedWeights = matrix_t::Zero(
+      MyRbfShadowEstimator::kBasisCount, MyRbfShadowEstimator::kAxisCount);
+  vector6_t expectedPreviousEstimate = vector6_t::Zero();
+  for (int step = 0; step < 100; ++step) {
+    vector6_t residual;
+    vector6_t sigma;
+    for (Eigen::Index axis = 0; axis < MyRbfShadowEstimator::kAxisCount;
+         ++axis) {
+      residual(axis) = 0.2 * (step + 1) * (axis + 1);
+      sigma(axis) = 0.05 * (axis + 1);
+    }
+    const scalar_t updateGate = step % 4 == 0 ? 0.0 : 0.75;
+    const scalar_t dt = 0.002;
+    const auto result = estimator.step(residual, sigma, dt, updateGate);
+
+    vector6_t expectedBefore = vector6_t::Zero();
+    matrix_t expectedDerivative = matrix_t::Zero(
+        MyRbfShadowEstimator::kBasisCount, MyRbfShadowEstimator::kAxisCount);
+    for (Eigen::Index axis = 0; axis < MyRbfShadowEstimator::kAxisCount;
+         ++axis) {
+      expectedBefore(axis) = settings.outputScale(axis) *
+          expectedWeights.col(axis).dot(result.basis.col(axis));
+      const vector_t physicalGradient =
+          settings.outputScale(axis) * result.basis.col(axis);
+      vector_t updateGradient = physicalGradient /
+          (settings.updateEpsilon + physicalGradient.squaredNorm());
+      const bool learningEnabled = updateGate > 0.0 &&
+          result.coverage(axis) >= settings.minimumCoverage;
+      if (learningEnabled) {
+        const scalar_t biasGradient = settings.outputScale(axis) /
+            (settings.updateEpsilon + settings.outputScale(axis) *
+                settings.outputScale(axis));
+        expectedDerivative(0, axis) += updateGate *
+            settings.trackingGain(axis) * sigma(axis) * biasGradient;
+        expectedDerivative.col(axis) += updateGate *
+            settings.predictionGain(axis) *
+            (residual(axis) - expectedBefore(axis)) * updateGradient;
+      }
+      expectedDerivative.col(axis) -=
+          settings.leakage(axis) * expectedWeights.col(axis);
+    }
+    expectedWeights += dt * expectedDerivative;
+    for (Eigen::Index axis = 0; axis < MyRbfShadowEstimator::kAxisCount;
+         ++axis) {
+      expectedWeights.col(axis) = expectedWeights.col(axis)
+          .cwiseMax(-settings.weightLimit(axis))
+          .cwiseMin(settings.weightLimit(axis));
+    }
+
+    vector6_t expectedAfter = vector6_t::Zero();
+    for (Eigen::Index axis = 0; axis < MyRbfShadowEstimator::kAxisCount;
+         ++axis) {
+      expectedAfter(axis) = settings.outputScale(axis) *
+          expectedWeights.col(axis).dot(result.basis.col(axis));
+      EXPECT_DOUBLE_EQ(result.coverage(axis), result.basis
+          .block(1, axis, MyRbfShadowEstimator::kGaussianNodeCount, 1)
+          .maxCoeff());
+      EXPECT_EQ(result.updateFrozen[static_cast<std::size_t>(axis)],
+                updateGate == 0.0);
+    }
+    EXPECT_TRUE(result.estimateBeforeUpdate.isApprox(expectedBefore, 1e-12));
+    EXPECT_TRUE(result.weightsAfterUpdate.isApprox(expectedWeights, 1e-12));
+    EXPECT_TRUE(result.estimateAfterUpdate.isApprox(expectedAfter, 1e-12));
+    EXPECT_TRUE(estimator.weights().isApprox(expectedWeights, 1e-12));
+    EXPECT_TRUE(estimator.estimate().isApprox(expectedAfter, 1e-12));
+    expectedPreviousEstimate = expectedAfter;
+  }
+  EXPECT_FALSE(expectedPreviousEstimate.isZero());
 }
 
 TEST(MyRbfShadowEstimator, LegacyDefaultsReproduceTheV4Derivative) {

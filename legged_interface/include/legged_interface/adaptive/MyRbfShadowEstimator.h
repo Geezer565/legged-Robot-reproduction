@@ -36,6 +36,11 @@ struct MyRbfShadowStepResult {
   vector6_t estimateAfterUpdate = vector6_t::Zero();
   vector6_t coverage = vector6_t::Zero();
   std::array<bool, 6> updateFrozen{};
+  vector6_t predictionDerivativeNorm = vector6_t::Zero();
+  vector6_t trackingBiasDerivative = vector6_t::Zero();
+  vector6_t leakageDerivativeNorm = vector6_t::Zero();
+  std::array<bool, 6> projectionActive{{false, false, false, false, false,
+                                        false}};
   matrix_t weightDerivative;
   matrix_t weightsAfterUpdate;
 };

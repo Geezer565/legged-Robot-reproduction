@@ -237,7 +237,7 @@ bool LeggedController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHand
     myRbfShadowPublisher_ = std::make_unique<
         realtime_tools::RealtimePublisher<std_msgs::Float64MultiArray>>(
         shadowNodeHandle, "/myrbf_shadow_diagnostics", 100);
-    myRbfShadowPublisher_->msg_.data.resize(87, 0.0);
+    myRbfShadowPublisher_->msg_.data.resize(111, 0.0);
     if (enableMyRbfControlInjection_) {
       ROS_WARN_STREAM("[MyRBF control] Injection enabled through "
                       << myRbfControlInterface_
@@ -628,6 +628,19 @@ void LeggedController::publishMyRbfShadowDiagnostics(
         result.estimator.updateFrozen[static_cast<std::size_t>(axis)];
   }
   values[index++] = updateFrozen ? 1.0 : 0.0;
+  for (Eigen::Index axis = 0; axis < 6; ++axis) {
+    values[index++] = result.estimator.predictionDerivativeNorm(axis);
+  }
+  for (Eigen::Index axis = 0; axis < 6; ++axis) {
+    values[index++] = result.estimator.trackingBiasDerivative(axis);
+  }
+  for (Eigen::Index axis = 0; axis < 6; ++axis) {
+    values[index++] = result.estimator.leakageDerivativeNorm(axis);
+  }
+  for (Eigen::Index axis = 0; axis < 6; ++axis) {
+    values[index++] = result.estimator.projectionActive[
+        static_cast<std::size_t>(axis)] ? 1.0 : 0.0;
+  }
   myRbfShadowPublisher_->unlockAndPublish();
 }
 

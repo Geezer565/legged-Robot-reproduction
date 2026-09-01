@@ -13,8 +13,8 @@ SPEC.loader.exec_module(MODULE)
 
 
 class MyRbfShadowRecordingTest(unittest.TestCase):
-    def test_decodes_fixed_diagnostic_layout(self):
-        values = [float(index) for index in range(87)]
+    def test_decodes_appended_update_diagnostics_after_legacy_layout(self):
+        values = [float(index) for index in range(111)]
 
         row = MODULE.decode_diagnostic(values)
 
@@ -39,12 +39,50 @@ class MyRbfShadowRecordingTest(unittest.TestCase):
         self.assertEqual(row["coverage_fx"], 80.0)
         self.assertEqual(row["coverage_tz"], 85.0)
         self.assertEqual(row["update_frozen"], 86.0)
+        self.assertEqual(row["prediction_derivative_norm_fx"], 87.0)
+        self.assertEqual(row["prediction_derivative_norm_tz"], 92.0)
+        self.assertEqual(row["tracking_bias_derivative_fx"], 93.0)
+        self.assertEqual(row["tracking_bias_derivative_tz"], 98.0)
+        self.assertEqual(row["leakage_derivative_norm_fx"], 99.0)
+        self.assertEqual(row["leakage_derivative_norm_tz"], 104.0)
+        self.assertEqual(row["projection_active_fx"], 105.0)
+        self.assertEqual(row["projection_active_tz"], 110.0)
+        self.assertEqual(len(MODULE.FIELDS), 111)
+        self.assertEqual(
+            MODULE.FIELDS[87:],
+            (
+                "prediction_derivative_norm_fx",
+                "prediction_derivative_norm_fy",
+                "prediction_derivative_norm_fz",
+                "prediction_derivative_norm_tx",
+                "prediction_derivative_norm_ty",
+                "prediction_derivative_norm_tz",
+                "tracking_bias_derivative_fx",
+                "tracking_bias_derivative_fy",
+                "tracking_bias_derivative_fz",
+                "tracking_bias_derivative_tx",
+                "tracking_bias_derivative_ty",
+                "tracking_bias_derivative_tz",
+                "leakage_derivative_norm_fx",
+                "leakage_derivative_norm_fy",
+                "leakage_derivative_norm_fz",
+                "leakage_derivative_norm_tx",
+                "leakage_derivative_norm_ty",
+                "leakage_derivative_norm_tz",
+                "projection_active_fx",
+                "projection_active_fy",
+                "projection_active_fz",
+                "projection_active_tx",
+                "projection_active_ty",
+                "projection_active_tz",
+            ),
+        )
         self.assertEqual(tuple(row), MODULE.FIELDS)
         self.assertTrue(all(math.isfinite(value) for value in row.values()))
 
     def test_rejects_truncated_diagnostic_message(self):
         with self.assertRaises(ValueError):
-            MODULE.decode_diagnostic([0.0] * 86)
+            MODULE.decode_diagnostic([0.0] * 110)
 
 
 if __name__ == "__main__":

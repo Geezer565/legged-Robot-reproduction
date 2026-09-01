@@ -48,6 +48,16 @@ def field_names():
         for axis in AXES
     )
     fields.append("update_frozen")
+    for prefix in (
+        "prediction_derivative_norm",
+        "tracking_bias_derivative",
+        "leakage_derivative_norm",
+        "projection_active",
+    ):
+        fields.extend(
+            f"{prefix}_{axis[:-2] if axis.endswith('_n') else axis[:-3]}"
+            for axis in AXES
+        )
     return fields
 
 
