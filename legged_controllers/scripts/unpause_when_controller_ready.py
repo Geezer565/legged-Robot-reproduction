@@ -10,11 +10,12 @@ from controller_manager_msgs.srv import (
     SwitchControllerRequest,
 )
 from gazebo_msgs.srv import GetJointProperties
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Float64MultiArray
 from std_srvs.srv import Empty
 
 from legged_controllers.myrbf_campaign_timing import (
     CAMPAIGN_START_TOPIC,
+    DiagnosticReadinessWindow,
     publish_campaign_start_when_running,
 )
 
@@ -43,6 +44,20 @@ def main():
     )
     campaign_start_publisher = rospy.Publisher(
         CAMPAIGN_START_TOPIC, Float64, queue_size=1, latch=True
+    )
+    diagnostic_readiness = DiagnosticReadinessWindow()
+
+    def observe_diagnostic_arrival(_message):
+        try:
+            diagnostic_readiness.observe(rospy.get_time())
+        except ValueError as error:
+            rospy.logwarn("MyRBF diagnostic readiness reset: %s", error)
+
+    diagnostic_subscriber = rospy.Subscriber(
+        "/myrbf_shadow_diagnostics",
+        Float64MultiArray,
+        observe_diagnostic_arrival,
+        queue_size=1,
     )
 
     # spawn_model applies -J positions after its own one-second workaround.
@@ -89,6 +104,7 @@ def main():
 
     campaign_start = publish_campaign_start_when_running(
         list_controller_state=controller_state,
+        diagnostic_ready=diagnostic_readiness.ready,
         publish_start=lambda value: campaign_start_publisher.publish(Float64(value)),
         ros_now=rospy.get_time,
         sleep=rospy.sleep,
@@ -97,7 +113,7 @@ def main():
         monotonic_now=time.monotonic,
     )
     rospy.loginfo(
-        "Go2 controller is running; shared campaign start %.9f published.",
+        "Go2 controller and diagnostics are ready; shared campaign start %.9f published.",
         campaign_start,
     )
     rospy.spin()
