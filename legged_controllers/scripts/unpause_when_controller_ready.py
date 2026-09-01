@@ -10,7 +10,13 @@ from controller_manager_msgs.srv import (
     SwitchControllerRequest,
 )
 from gazebo_msgs.srv import GetJointProperties
+from std_msgs.msg import Float64
 from std_srvs.srv import Empty
+
+from myrbf_campaign_timing import (
+    CAMPAIGN_START_TOPIC,
+    publish_campaign_start_when_running,
+)
 
 
 def main():
@@ -34,6 +40,9 @@ def main():
     )
     get_joint = rospy.ServiceProxy(
         "/gazebo/get_joint_properties", GetJointProperties
+    )
+    campaign_start_publisher = rospy.Publisher(
+        CAMPAIGN_START_TOPIC, Float64, queue_size=1, latch=True
     )
 
     # spawn_model applies -J positions after its own one-second workaround.
@@ -74,14 +83,23 @@ def main():
     if not switch_controller(request).ok:
         raise RuntimeError("Failed to start the Go2 controllers")
 
-    deadline = time.monotonic() + 30.0
-    while not rospy.is_shutdown() and time.monotonic() < deadline:
+    def controller_state():
         states = {item.name: item.state for item in list_controllers().controller}
-        if states.get("controllers/legged_controller") == "running":
-            rospy.loginfo("Go2 controller is running; Gazebo physics released.")
-            return
-        rospy.sleep(0.05)
-    raise RuntimeError("Go2 controller did not become ready before timeout")
+        return states.get("controllers/legged_controller")
+
+    campaign_start = publish_campaign_start_when_running(
+        list_controller_state=controller_state,
+        publish_start=lambda value: campaign_start_publisher.publish(Float64(value)),
+        ros_now=rospy.get_time,
+        sleep=rospy.sleep,
+        is_shutdown=rospy.is_shutdown,
+        timeout_s=30.0,
+        monotonic_now=time.monotonic,
+    )
+    rospy.loginfo(
+        "Go2 controller is running; shared campaign start %.9f published.",
+        campaign_start,
+    )
 
 
 if __name__ == "__main__":

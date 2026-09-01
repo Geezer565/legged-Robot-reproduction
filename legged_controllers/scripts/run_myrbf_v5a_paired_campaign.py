@@ -9,6 +9,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import shlex
 import shutil
 import signal
@@ -76,34 +77,98 @@ def _sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def _source_head():
-    return subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=str(SOURCE_ROOT), text=True
-    ).strip()
-
-
-def _validate_source_commit(source_commit, source_head):
+def _validate_source_commit(source_commit):
     if (not isinstance(source_commit, str) or len(source_commit) != 40 or
             any(character not in "0123456789abcdef"
                 for character in source_commit)):
         raise ValueError("source commit must be an explicit lowercase 40-hex value")
-    if source_commit != source_head:
+
+
+def _canonical_hash(value):
+    encoded = json.dumps(
+        value, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def create_source_lock(source_root, source_commit):
+    source_root = Path(source_root)
+    _validate_source_commit(source_commit)
+    try:
+        source_head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=str(source_root), text=True,
+            stderr=subprocess.STDOUT,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise ValueError("Git is not usable for source-lock creation") from error
+    if source_head != source_commit:
         raise ValueError("source commit does not match source HEAD")
+    critical_files = tuple(campaign_schema.EXECUTION_CRITICAL_FILES)
+    tracked = subprocess.check_output(
+        ["git", "ls-files", "--", *critical_files],
+        cwd=str(source_root), text=True,
+    ).splitlines()
+    if set(tracked) != set(critical_files):
+        raise ValueError("source-lock critical files must all be tracked")
+    dirty = subprocess.check_output(
+        ["git", "status", "--porcelain", "--untracked-files=no", "--",
+         *critical_files],
+        cwd=str(source_root), text=True,
+    ).strip()
+    if dirty:
+        raise ValueError("dirty critical tracked files prevent source-lock creation")
+    return {
+        "schema_version": campaign_schema.SOURCE_LOCK_VERSION,
+        "source_commit": source_commit,
+        "files": {
+            relative: _sha256(source_root / relative)
+            for relative in critical_files
+        },
+    }
 
 
-def _validate_frozen_inputs(protocol, source_commit, source_head):
+def _verify_source_lock(source_root, source_lock):
+    expected = tuple(campaign_schema.EXECUTION_CRITICAL_FILES)
+    files = source_lock.get("files") if isinstance(source_lock, dict) else None
+    if (not isinstance(source_lock, dict) or
+            source_lock.get("schema_version") !=
+            campaign_schema.SOURCE_LOCK_VERSION or
+            not isinstance(files, dict) or
+            set(files) != set(expected)):
+        raise ValueError("source-lock schema/file set drift")
+    for relative in expected:
+        path = Path(source_root) / relative
+        expected_hash = files.get(relative)
+        if (not isinstance(expected_hash, str) or len(expected_hash) != 64 or
+                not path.is_file() or _sha256(path) != expected_hash):
+            raise ValueError("source-lock drift for %s" % relative)
+
+
+def _load_source_lock(path, source_root, source_commit):
+    if path is None or not Path(path).is_file():
+        raise ValueError("execution requires an explicit source lock")
+    try:
+        source_lock = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise ValueError("source lock is invalid") from error
+    _validate_source_commit(source_commit)
+    if source_lock.get("source_commit") != source_commit:
+        raise ValueError("source-lock commit drift")
+    _verify_source_lock(source_root, source_lock)
+    return source_lock
+
+
+def _validate_frozen_inputs(protocol, source_commit, source_lock_path,
+                            source_root):
     protocol = Path(protocol) if protocol is not None else None
     if protocol is None or not protocol.is_file():
         raise ValueError("execution requires an explicit protocol file")
     protocol_hash = _sha256(protocol)
     if protocol_hash != campaign_schema.FROZEN_PROTOCOL_SHA256:
         raise ValueError("protocol hash does not match frozen campaign")
-    _validate_source_commit(source_commit, source_head)
-    for method in campaign_schema.METHODS:
-        config_path = SOURCE_ROOT / campaign_schema.METHOD_CONFIGS[method]
-        if _sha256(config_path) != campaign_schema.METHOD_CONFIG_SHA256[method]:
-            raise ValueError("configuration hash drift for %s" % method)
-    return protocol
+    source_lock = _load_source_lock(
+        source_lock_path, source_root, source_commit)
+    return protocol, source_lock, _canonical_hash(source_lock)
 
 
 def _read_csv(path, required_fields, string_fields=(),
@@ -189,6 +254,17 @@ def _validate_full_run(claim, start_elapsed, duration, label):
                          label)
 
 
+def _validate_shared_campaign_start(streams):
+    first_stream = next(iter(streams.values()))
+    campaign_start_ros = first_stream[0]["campaign_start_ros"]
+    for label, rows in streams.items():
+        if any(abs(row["campaign_start_ros"] - campaign_start_ros) > 1e-9
+               for row in rows):
+            raise ValueError("%s campaign start does not match shared origin" %
+                             label)
+    return campaign_start_ros
+
+
 def _validate_motion(rows, scenario):
     start = scenario["motion_delay_s"]
     stop = start + scenario["motion_duration_s"]
@@ -232,11 +308,16 @@ def _validate_wrench(rows, scenario):
     stop = start + scenario["force_duration_s"]
     if rows[0]["wall_elapsed"] > start or rows[-1]["wall_elapsed"] < stop:
         raise ValueError("wrench coverage does not cover the exact schedule")
+    selected_axis = scenario["force_axis"]
     for row in rows:
+        if any(abs(row[axis]) > COMMAND_TOLERANCE
+               for axis in ("fx", "fy", "fz", "tx", "ty", "tz")
+               if axis != selected_axis):
+            raise ValueError("non-selected wrench axis must remain zero")
         active = start <= row["wall_elapsed"] < stop
         if ((row["service_called"] > 0.5) != active or
                 row["service_success"] < 0.5 or
-                abs(row[scenario["force_axis"]] -
+                abs(row[selected_axis] -
                     _expected_force(scenario, row["wall_elapsed"])) > 1e-6):
             raise ValueError("wrench record does not match the exact schedule")
 
@@ -272,6 +353,11 @@ def _inspect_attempt(spec, attempt_dir, log_path):
             campaign_schema.REQUIRED_CSV_FIELDS["wrench.csv"],
         )
 
+    streams = {"shadow": shadow, "state": state, "motion": motion}
+    if wrench is not None:
+        streams["wrench"] = wrench
+    campaign_start_ros = _validate_shared_campaign_start(streams)
+
     _validate_series(shadow, "time_s", "controller times")
     _validate_series(state, "ros_time", "state times")
     _validate_series(motion, "wall_elapsed", "motion times")
@@ -279,9 +365,8 @@ def _inspect_attempt(spec, attempt_dir, log_path):
         _validate_series(wrench, "wall_elapsed", "wrench times")
     controller_claim = _span_claim(shadow, "time_s")
     estimator_claim = _span_claim(state, "wall_elapsed")
-    ros_origin = state[0]["ros_time"] - state[0]["wall_elapsed"]
     _validate_full_run(
-        controller_claim, shadow[0]["time_s"] - ros_origin,
+        controller_claim, shadow[0]["time_s"] - campaign_start_ros,
         duration, "controller")
     _validate_full_run(
         estimator_claim, state[0]["wall_elapsed"], duration, "state")
@@ -308,7 +393,23 @@ def _inspect_attempt(spec, attempt_dir, log_path):
         "minimum_base_height_m": minimum_height,
         "safety_stop_detected": safety_stop,
         "finite": True,
+        "campaign_start_ros": campaign_start_ros,
     }
+
+
+def _terminate_process_group(process):
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        process.wait(timeout=5.0)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
 
 
 def _supervise(command, cwd, log_path, timeout_s):
@@ -321,13 +422,11 @@ def _supervise(command, cwd, log_path, timeout_s):
             return {"exit_code": process.wait(timeout=timeout_s),
                     "timed_out": False}
         except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGTERM)
-            try:
-                process.wait(timeout=5.0)
-            except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGKILL)
-                process.wait()
+            _terminate_process_group(process)
             return {"exit_code": process.returncode, "timed_out": True}
+        except BaseException:
+            _terminate_process_group(process)
+            raise
 
 
 def _write_manifest(path, manifest):
@@ -374,13 +473,15 @@ def _inspection_matches_run(inspection, run):
         run.get("controller_rows") == inspection["controller_rows"] and
         run.get("estimator_rows") == inspection["estimator_rows"] and
         run.get("observed_spans") == inspection["observed_spans"] and
+        run.get("campaign_start_ros") == inspection["campaign_start_ros"] and
         run.get("finite") is True and
         run.get("safety_stop_detected") is False and
         run.get("exit_code") == 0
     )
 
 
-def _load_resume_manifest(output_root, matrix, source_commit):
+def _load_resume_manifest(output_root, matrix, source_commit, source_lock,
+                          source_lock_sha256):
     manifest_path = output_root / "manifest.json"
     if not manifest_path.is_file():
         raise ValueError("resume manifest is missing")
@@ -393,7 +494,9 @@ def _load_resume_manifest(output_root, matrix, source_commit):
             manifest.get("protocol_sha256") !=
             campaign_schema.FROZEN_PROTOCOL_SHA256 or
             manifest.get("protocol_snapshot") !=
-            campaign_schema.protocol_snapshot()):
+            campaign_schema.protocol_snapshot() or
+            manifest.get("source_lock") != source_lock or
+            manifest.get("source_lock_sha256") != source_lock_sha256):
         raise ValueError("resume protocol/schema drift")
     frozen_protocol = output_root / campaign_schema.PROTOCOL_FILENAME
     if (not frozen_protocol.is_file() or
@@ -425,10 +528,15 @@ def _load_resume_manifest(output_root, matrix, source_commit):
         history = run.get("attempt_history")
         if not isinstance(history, list) or not history:
             raise ValueError("resume attempt history drift")
-        for attempt_number, attempt in enumerate(history, start=1):
-            if (not isinstance(attempt, dict) or
-                    attempt.get("attempt") != attempt_number):
+        previous_attempt = 0
+        for attempt in history:
+            attempt_number = (
+                attempt.get("attempt") if isinstance(attempt, dict) else None
+            )
+            if (not isinstance(attempt_number, int) or
+                    attempt_number <= previous_attempt):
                 raise ValueError("resume attempt history drift")
+            previous_attempt = attempt_number
             attempt_dir = _safe_output_directory(
                 output_root, attempt.get("output_dir", ""))
             if not attempt_dir.is_dir():
@@ -454,8 +562,21 @@ def _load_resume_manifest(output_root, matrix, source_commit):
     return manifest
 
 
+def _next_attempt_number(run_dir, history):
+    used = {
+        attempt["attempt"] for attempt in history
+        if isinstance(attempt, dict) and isinstance(attempt.get("attempt"), int)
+    }
+    if run_dir.is_dir():
+        for child in run_dir.iterdir():
+            match = re.fullmatch(r"attempt-(\d{3})", child.name)
+            if match:
+                used.add(int(match.group(1)))
+    return max(used, default=0) + 1
+
+
 def run_campaign(output_root: Path, execute: bool, **options) -> int:
-    output_root = Path(output_root)
+    output_root = Path(output_root).resolve()
     matrix = build_run_matrix()
     if not execute:
         for spec in matrix:
@@ -466,15 +587,18 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
     resume = bool(options.get("resume", False))
     if not resume and output_root.exists() and any(output_root.iterdir()):
         raise ValueError("first execution refuses a nonempty output root")
-    source_head = options.get("source_head") or _source_head()
     source_commit = options.get("source_commit")
-    protocol = _validate_frozen_inputs(
-        options.get("protocol"), source_commit, source_head)
+    source_root = Path(options.get("source_root", SOURCE_ROOT))
+    protocol, source_lock, source_lock_sha256 = _validate_frozen_inputs(
+        options.get("protocol"), source_commit, options.get("source_lock"),
+        source_root)
     manifest_path = output_root / "manifest.json"
     if resume:
         if not output_root.is_dir():
             raise ValueError("resume campaign root is missing")
-        manifest = _load_resume_manifest(output_root, matrix, source_commit)
+        manifest = _load_resume_manifest(
+            output_root, matrix, source_commit, source_lock,
+            source_lock_sha256)
     else:
         output_root.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(
@@ -485,6 +609,8 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             "schema_version": campaign_schema.SCHEMA_VERSION,
             "protocol_sha256": campaign_schema.FROZEN_PROTOCOL_SHA256,
             "protocol_snapshot": campaign_schema.protocol_snapshot(),
+            "source_lock": source_lock,
+            "source_lock_sha256": source_lock_sha256,
             "runs": [],
         }
         _write_manifest(manifest_path, manifest)
@@ -499,11 +625,14 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             continue
         history = (list(existing["attempt_history"])
                    if existing is not None else [])
-        attempt_number = len(history) + 1
         if existing is None:
-            run_dir.mkdir(exist_ok=False)
+            if resume and run_dir.is_dir():
+                pass
+            else:
+                run_dir.mkdir(exist_ok=False)
         elif not run_dir.is_dir():
             raise ValueError("resume run directory drift")
+        attempt_number = _next_attempt_number(run_dir, history)
         attempt_dir = run_dir / ("attempt-%03d" % attempt_number)
         attempt_dir.mkdir(exist_ok=False)
         relative_output = attempt_dir.relative_to(output_root).as_posix()
@@ -520,11 +649,54 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             "minimum_base_height_m": None,
             "safety_stop_detected": False,
             "finite": False,
+            "campaign_start_ros": None,
         }
+        attempt = {
+            "attempt": attempt_number,
+            "status": "in_progress",
+            "output_dir": relative_output,
+            "command": list(command),
+            "started_at": started_at,
+            "finished_at": None,
+            "exit_code": None,
+            "timed_out": False,
+            "controller_rows": 0,
+            "estimator_rows": 0,
+            "observed_spans": inspection["observed_spans"],
+            "minimum_base_height_m": None,
+            "safety_stop_detected": False,
+            "finite": False,
+            "campaign_start_ros": None,
+            "complete": False,
+            "error": None,
+        }
+        run = _base_run_record(spec, source_commit, command)
+        history.append(attempt)
+        run.update({
+            "started_at": started_at,
+            "finished_at": None,
+            "exit_code": None,
+            "controller_rows": 0,
+            "estimator_rows": 0,
+            "finite": False,
+            "campaign_start_ros": None,
+            "safety_stop_detected": False,
+            "complete": False,
+            "output_dir": relative_output,
+            "attempt_history": history,
+            "observed_spans": inspection["observed_spans"],
+            "minimum_base_height_m": None,
+        })
+        if existing is None:
+            manifest["runs"].append(run)
+        else:
+            manifest["runs"][matrix_index] = run
+        _write_manifest(manifest_path, manifest)
+        _verify_source_lock(source_root, source_lock)
         error = None
         try:
             process_result = process_runner(
-                command, SOURCE_ROOT, log_path,
+                command, source_root, log_path,
                 campaign_schema.SCENARIOS[spec.scenario]["duration_s"] +
                 timeout_padding,
             )
@@ -543,8 +715,9 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             not inspection["safety_stop_detected"] and
             error is None
         )
-        attempt = {
+        attempt.update({
             "attempt": attempt_number,
+            "status": "complete" if complete else "failed",
             "output_dir": relative_output,
             "command": list(command),
             "started_at": started_at,
@@ -557,11 +730,10 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             "minimum_base_height_m": inspection["minimum_base_height_m"],
             "safety_stop_detected": inspection["safety_stop_detected"],
             "finite": inspection["finite"],
+            "campaign_start_ros": inspection["campaign_start_ros"],
             "complete": complete,
             "error": error,
-        }
-        run = _base_run_record(spec, source_commit, command)
-        history.append(attempt)
+        })
         run.update({
             "started_at": started_at,
             "finished_at": finished_at,
@@ -569,6 +741,7 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             "controller_rows": inspection["controller_rows"],
             "estimator_rows": inspection["estimator_rows"],
             "finite": inspection["finite"],
+            "campaign_start_ros": inspection["campaign_start_ros"],
             "safety_stop_detected": inspection["safety_stop_detected"],
             "complete": complete,
             "output_dir": relative_output,
@@ -576,10 +749,6 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             "observed_spans": inspection["observed_spans"],
             "minimum_base_height_m": inspection["minimum_base_height_m"],
         })
-        if existing is None:
-            manifest["runs"].append(run)
-        else:
-            manifest["runs"][matrix_index] = run
         _write_manifest(manifest_path, manifest)
         if not complete:
             return 1
@@ -598,12 +767,15 @@ def parse_args(argv=None):
     mode.add_argument("--execute", action="store_true")
     parser.add_argument("--protocol", type=Path)
     parser.add_argument("--source-commit")
+    parser.add_argument("--source-lock", type=Path)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args(argv)
     if args.execute and args.protocol is None:
         parser.error("--execute requires explicit --protocol")
     if args.execute and args.source_commit is None:
         parser.error("--execute requires explicit --source-commit")
+    if args.execute and args.source_lock is None:
+        parser.error("--execute requires explicit --source-lock")
     if args.dry_run and args.resume:
         parser.error("--resume is valid only with --execute")
     return args
@@ -616,6 +788,7 @@ def main(argv=None):
         execute=args.execute,
         protocol=args.protocol,
         source_commit=args.source_commit,
+        source_lock=args.source_lock,
         resume=args.resume,
     )
 

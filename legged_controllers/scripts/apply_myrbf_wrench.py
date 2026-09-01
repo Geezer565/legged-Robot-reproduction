@@ -4,7 +4,8 @@ import argparse
 import csv
 import math
 from pathlib import Path
-import time
+
+from myrbf_campaign_timing import CAMPAIGN_START_TOPIC, campaign_elapsed
 
 
 AXES = ("fx", "fy", "fz", "tx", "ty", "tz")
@@ -84,6 +85,7 @@ def parse_args(argv=None):
 def main():
     import rospy
     from gazebo_msgs.srv import ApplyBodyWrench, ApplyBodyWrenchRequest, GetLinkState
+    from std_msgs.msg import Float64
 
     args = parse_args(rospy.myargv()[1:])
     validate_profile(args.profile, args.delay, args.duration, args.value)
@@ -109,21 +111,20 @@ def main():
         return
     rospy.loginfo("Gazebo body %s is ready; starting wrench schedule.", args.body)
 
-    start = time.monotonic()
+    campaign_start_ros = rospy.wait_for_message(
+        CAMPAIGN_START_TOPIC, Float64, timeout=60.0
+    ).data
     end = args.delay + args.duration + 1.0
     period = 1.0 / args.rate
-    next_sample = start
+    rate = rospy.Rate(args.rate)
     with output.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(("ros_time", "wall_elapsed", *AXES, "service_called", "service_success"))
+        writer.writerow(("ros_time", "campaign_start_ros", "wall_elapsed", *AXES, "service_called", "service_success"))
         while not rospy.is_shutdown():
-            now = time.monotonic()
-            elapsed = now - start
+            ros_now = rospy.get_time()
+            elapsed = campaign_elapsed(ros_now, campaign_start_ros)
             if elapsed >= end:
                 break
-            if now < next_sample:
-                time.sleep(min(next_sample - now, period))
-                continue
 
             scalar = profile_value(
                 elapsed, args.profile, args.delay, args.duration,
@@ -150,11 +151,10 @@ def main():
                     rospy.logerr("Gazebo wrench call failed: %s", error)
                     success = False
             writer.writerow((
-                rospy.get_time(), elapsed, *wrench_values, int(active), int(success)))
+                ros_now, campaign_start_ros, elapsed,
+                *wrench_values, int(active), int(success)))
             handle.flush()
-            next_sample += period
-            if next_sample < now - period:
-                next_sample = now
+            rate.sleep()
 
     rospy.loginfo("Finished MyRBF %s wrench profile; truth written to %s", args.profile, output)
 

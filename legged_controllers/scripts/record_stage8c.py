@@ -5,12 +5,11 @@ import csv
 import math
 import os
 import threading
-import time
 
 import rospy
-from gazebo_msgs.msg import LinkStates
-from ocs2_msgs.msg import mode_schedule, mpc_observation
-from std_msgs.msg import String
+from std_msgs.msg import Float64, String
+
+from myrbf_campaign_timing import CAMPAIGN_START_TOPIC, campaign_elapsed
 
 
 LINK_NAMES = ("base", "LF_FOOT", "RF_FOOT", "LH_FOOT", "RH_FOOT")
@@ -18,6 +17,9 @@ LINK_NAMES = ("base", "LF_FOOT", "RF_FOOT", "LH_FOOT", "RH_FOOT")
 
 class Stage8cRecorder:
     def __init__(self):
+        from gazebo_msgs.msg import LinkStates
+        from ocs2_msgs.msg import mode_schedule, mpc_observation
+
         self._lock = threading.Lock()
         self._link_states = None
         self._observation = None
@@ -53,14 +55,20 @@ class Stage8cRecorder:
                 return index
         return None
 
-    def row(self, wall_elapsed):
+    def row(self, campaign_start_ros):
         with self._lock:
             links = self._link_states
             observation = self._observation
             schedule = self._schedule
             event = self._event
 
-        values = [rospy.get_time(), wall_elapsed, event]
+        ros_now = rospy.get_time()
+        values = [
+            ros_now,
+            campaign_start_ros,
+            campaign_elapsed(ros_now, campaign_start_ros),
+            event,
+        ]
         if observation is None:
             values.extend([math.nan] * 8)
         else:
@@ -96,6 +104,7 @@ class Stage8cRecorder:
 def header():
     columns = [
         "ros_time",
+        "campaign_start_ros",
         "wall_elapsed",
         "event",
         "observation_time",
@@ -142,26 +151,22 @@ def main():
 
     rospy.init_node("aclf_stage8c_recorder", anonymous=True)
     recorder = Stage8cRecorder()
-    start = time.monotonic()
-    period = 1.0 / args.rate
-    next_sample = start
+    campaign_start_ros = rospy.wait_for_message(
+        CAMPAIGN_START_TOPIC, Float64, timeout=60.0
+    ).data
+    rate = rospy.Rate(args.rate)
 
     with open(args.output, "w", newline="") as output:
         writer = csv.writer(output)
         writer.writerow(header())
         while not rospy.is_shutdown():
-            now = time.monotonic()
-            if args.duration > 0.0 and now - start >= args.duration:
+            elapsed = campaign_elapsed(rospy.get_time(), campaign_start_ros)
+            if args.duration > 0.0 and elapsed >= args.duration:
                 break
-            if now < next_sample:
-                time.sleep(min(next_sample - now, period))
-                continue
-            writer.writerow(recorder.row(now - start))
-            if now - start < period or int((now - start) * args.rate) % int(max(args.rate, 1.0)) == 0:
+            writer.writerow(recorder.row(campaign_start_ros))
+            if elapsed < 1.0 / args.rate or int(elapsed * args.rate) % int(max(args.rate, 1.0)) == 0:
                 output.flush()
-            next_sample += period
-            if next_sample < now - period:
-                next_sample = now
+            rate.sleep()
 
 
 if __name__ == "__main__":

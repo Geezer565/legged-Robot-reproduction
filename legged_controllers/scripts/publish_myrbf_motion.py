@@ -4,7 +4,8 @@ import argparse
 import csv
 import math
 from pathlib import Path
-import time
+
+from myrbf_campaign_timing import CAMPAIGN_START_TOPIC, campaign_elapsed
 
 
 GAIT_TEMPLATES = {
@@ -55,6 +56,7 @@ def main():
     import rospy
     from geometry_msgs.msg import Twist
     from ocs2_msgs.msg import mode_schedule, mpc_observation
+    from std_msgs.msg import Float64
 
     args = parse_args(rospy.myargv()[1:])
     validate_motion(args.delay, args.duration, args.rate, args.vx, args.vy, args.yaw_rate)
@@ -63,6 +65,9 @@ def main():
 
     rospy.init_node("myrbf_motion_publisher", anonymous=True)
     rospy.wait_for_message("/legged_robot_mpc_observation", mpc_observation, timeout=60.0)
+    campaign_start_ros = rospy.wait_for_message(
+        CAMPAIGN_START_TOPIC, Float64, timeout=60.0
+    ).data
     gait_publisher = rospy.Publisher(
         "/legged_robot_mpc_mode_schedule", mode_schedule, queue_size=1, latch=True)
     velocity_publisher = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
@@ -82,23 +87,18 @@ def main():
     command.angular.z = args.yaw_rate
     publish_gait("stance")
 
-    start = time.monotonic()
     end = args.delay + args.duration + 1.0
-    period = 1.0 / args.rate
-    next_sample = start
+    rate = rospy.Rate(args.rate)
     gait_started = False
     gait_stopped = False
     with output.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(("ros_time", "wall_elapsed", "active", "gait", "vx", "vy", "yaw_rate"))
+        writer.writerow(("ros_time", "campaign_start_ros", "wall_elapsed", "active", "gait", "vx", "vy", "yaw_rate"))
         while not rospy.is_shutdown():
-            now = time.monotonic()
-            elapsed = now - start
+            ros_now = rospy.get_time()
+            elapsed = campaign_elapsed(ros_now, campaign_start_ros)
             if elapsed >= end:
                 break
-            if now < next_sample:
-                time.sleep(min(next_sample - now, period))
-                continue
 
             active = motion_is_active(elapsed, args.delay, args.duration)
             if active and not gait_started:
@@ -111,13 +111,11 @@ def main():
                 rospy.loginfo("Stopping motion and returning to stance")
             velocity_publisher.publish(command if active else zero)
             writer.writerow((
-                rospy.get_time(), elapsed, int(active), args.gait if active else "stance",
+                ros_now, campaign_start_ros, elapsed, int(active), args.gait if active else "stance",
                 args.vx if active else 0.0, args.vy if active else 0.0,
                 args.yaw_rate if active else 0.0))
             handle.flush()
-            next_sample += period
-            if next_sample < now - period:
-                next_sample = now
+            rate.sleep()
 
     velocity_publisher.publish(zero)
     publish_gait("stance")

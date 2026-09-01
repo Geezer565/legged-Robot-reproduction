@@ -5,6 +5,7 @@ import contextlib
 import csv
 import importlib.util
 import io
+import hashlib
 import json
 import math
 import os
@@ -16,6 +17,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 import xml.etree.ElementTree as ET
 
 from legged_controllers.test.test_myrbf_v5a_paired_analysis import (
@@ -58,6 +60,21 @@ def read_csv(path):
         return list(csv.DictReader(handle))
 
 
+def write_portable_source_lock(module, source_root, path, source_commit):
+    files = {
+        relative: hashlib.sha256(
+            (source_root / relative).read_bytes()).hexdigest()
+        for relative in module.campaign_schema.EXECUTION_CRITICAL_FILES
+    }
+    lock = {
+        "schema_version": module.campaign_schema.SOURCE_LOCK_VERSION,
+        "source_commit": source_commit,
+        "files": files,
+    }
+    path.write_text(json.dumps(lock, sort_keys=True) + "\n", encoding="utf-8")
+    return lock
+
+
 def write_valid_evidence(command, log_path):
     arguments = command_arguments(command)
     duration = float(arguments["duration"])
@@ -81,6 +98,8 @@ def write_valid_evidence(command, log_path):
         else:
             force = 15.0 * math.sin(2.0 * math.pi * 0.5 * (elapsed - 6.0))
         shadow_rows.append({
+            "campaign_start_ros": 100.0,
+            "wall_elapsed": elapsed,
             "time_s": ros_time,
             "estimate_after_fy_n": -force,
             "actual_base_y_m": 0.0,
@@ -94,7 +113,8 @@ def write_valid_evidence(command, log_path):
             "projection_active_ty": 0, "projection_active_tz": 0,
         })
         state_rows.append({
-            "ros_time": ros_time, "wall_elapsed": elapsed,
+            "ros_time": ros_time, "campaign_start_ros": 100.0,
+            "wall_elapsed": elapsed,
             "base_x": 0.0, "base_y": 0.0, "base_z": 0.34,
             "observation_base_yaw": 0.0,
             "observation_base_pitch": 0.0,
@@ -102,14 +122,16 @@ def write_valid_evidence(command, log_path):
             "base_vx": 0.0, "base_vy": 0.0, "base_vz": 0.0,
         })
         motion_rows.append({
-            "ros_time": ros_time, "wall_elapsed": elapsed,
+            "ros_time": ros_time, "campaign_start_ros": 100.0,
+            "wall_elapsed": elapsed,
             "active": 1 if motion_active else 0,
             "gait": "static_walk" if motion_active else "stance",
             "vx": 0.08 if motion_active else 0.0,
             "vy": 0.0, "yaw_rate": 0.0,
         })
         wrench_rows.append({
-            "ros_time": ros_time, "wall_elapsed": elapsed,
+            "ros_time": ros_time, "campaign_start_ros": 100.0,
+            "wall_elapsed": elapsed,
             "fx": 0.0, "fy": force, "fz": 0.0,
             "tx": 0.0, "ty": 0.0, "tz": 0.0,
             "service_called": 1 if force_active else 0,
@@ -146,6 +168,19 @@ class FailingProcess:
         return {"exit_code": 7, "timed_out": False}
 
 
+class SuccessfulThenFailingProcess:
+    def __init__(self):
+        self.commands = []
+
+    def __call__(self, command, cwd, log_path, timeout_s):
+        self.commands.append(list(command))
+        if len(self.commands) == 1:
+            write_valid_evidence(command, log_path)
+            return {"exit_code": 0, "timed_out": False}
+        log_path.write_text("intentional second-run failure\n", encoding="utf-8")
+        return {"exit_code": 7, "timed_out": False}
+
+
 class MustNotRunProcess:
     def __init__(self):
         self.commands = []
@@ -153,6 +188,22 @@ class MustNotRunProcess:
     def __call__(self, command, cwd, log_path, timeout_s):
         self.commands.append(list(command))
         raise AssertionError("process must not be launched")
+
+
+class ManifestCheckingProcess:
+    def __init__(self, output_root):
+        self.output_root = output_root
+
+    def __call__(self, command, cwd, log_path, timeout_s):
+        manifest = json.loads(
+            (self.output_root / "manifest.json").read_text(encoding="utf-8")
+        )
+        attempt = manifest["runs"][0]["attempt_history"][0]
+        if (attempt["status"] != "in_progress" or attempt["complete"] or
+                attempt["finished_at"] is not None or
+                attempt["exit_code"] is not None):
+            raise AssertionError("attempt was not persisted before launch")
+        return {"exit_code": 7, "timed_out": False}
 
 
 def load_runner():
@@ -317,13 +368,16 @@ class SuccessfulExecutionTest(unittest.TestCase):
             protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
             output_root = workspace / "campaign"
             process = SuccessfulEvidenceProcess()
+            source_lock = workspace / "source-lock.json"
+            write_portable_source_lock(
+                module, module.SOURCE_ROOT, source_lock, source_commit)
 
             result = module.run_campaign(
                 output_root,
                 execute=True,
                 protocol=protocol,
                 source_commit=source_commit,
-                source_head=source_commit,
+                source_lock=source_lock,
                 process_runner=process,
             )
 
@@ -358,6 +412,7 @@ class SuccessfulExecutionTest(unittest.TestCase):
             self.assertGreater(first["estimator_rows"], 0)
             self.assertEqual(first["observed_spans"]["controller"]["span_s"],
                              15.0)
+            self.assertEqual(first["campaign_start_ros"], 100.0)
             self.assertIsNone(first["observed_spans"]["wrench"])
             self.assertTrue((output_root / first["output_dir"] /
                              "run.log").is_file())
@@ -416,16 +471,50 @@ class RunnerCompletenessTest(unittest.TestCase):
                             ValueError, "full-run coverage|excessive gap"):
                         module._inspect_attempt(spec, attempt_dir, log_path)
 
+    def test_runner_rejects_mismatched_shared_campaign_start(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            spec, attempt_dir, log_path = self.make_attempt(
+                module, Path(directory))
+            motion_path = attempt_dir / "motion.csv"
+            rows = read_csv(motion_path)
+            for row in rows:
+                row["campaign_start_ros"] = "101.0"
+            write_csv(motion_path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "campaign start"):
+                module._inspect_attempt(spec, attempt_dir, log_path)
+
+    def test_runner_rejects_nonzero_nonselected_wrench_axis(self):
+        module = load_runner()
+        for axis in ("fx", "fz", "tx", "ty", "tz"):
+            with self.subTest(axis=axis):
+                with tempfile.TemporaryDirectory() as directory:
+                    spec, attempt_dir, log_path = self.make_attempt(
+                        module, Path(directory))
+                    wrench_path = attempt_dir / "wrench.csv"
+                    rows = read_csv(wrench_path)
+                    rows[len(rows) // 2][axis] = "0.25"
+                    write_csv(wrench_path, tuple(rows[0]), rows)
+
+                    with self.assertRaisesRegex(
+                            ValueError, "non-selected wrench axis"):
+                        module._inspect_attempt(spec, attempt_dir, log_path)
+
 
 class ResumeTest(unittest.TestCase):
     SOURCE_COMMIT = "8e7dd40b0eb085bc91b6c20fd660b0171774c8b9"
     make_attempt = RunnerCompletenessTest.make_attempt
 
     def execution_options(self, protocol, process):
+        source_lock = protocol.parent / "source-lock.json"
+        module = load_runner()
+        write_portable_source_lock(
+            module, module.SOURCE_ROOT, source_lock, self.SOURCE_COMMIT)
         return {
             "protocol": protocol,
             "source_commit": self.SOURCE_COMMIT,
-            "source_head": self.SOURCE_COMMIT,
+            "source_lock": source_lock,
             "process_runner": process,
         }
 
@@ -495,6 +584,81 @@ class ResumeTest(unittest.TestCase):
             self.assertTrue(first["complete"])
             self.assertTrue((output_root / first["output_dir"] /
                              "run.log").is_file())
+
+    def test_resume_preserves_orphan_attempt_and_uses_next_unused_number(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            protocol = workspace / "PROTOCOL-source.md"
+            protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
+            output_root = workspace / "campaign"
+            self.assertEqual(module.run_campaign(
+                output_root, True,
+                **self.execution_options(protocol, FailingProcess())), 1)
+            run_dir = output_root / "no_disturbance_r01_01_v4"
+            orphan = run_dir / "attempt-007"
+            orphan.mkdir()
+            sentinel = orphan / "orphan.txt"
+            sentinel.write_text("preserve orphan", encoding="utf-8")
+
+            self.assertEqual(module.run_campaign(
+                output_root, True, resume=True,
+                **self.execution_options(protocol, FailingProcess())), 1)
+
+            manifest = json.loads(
+                (output_root / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                manifest["runs"][0]["output_dir"],
+                "no_disturbance_r01_01_v4/attempt-008",
+            )
+            self.assertEqual(sentinel.read_text(encoding="utf-8"),
+                             "preserve orphan")
+
+    def test_resume_adopts_orphan_attempt_directory_for_unstarted_run(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            protocol = workspace / "PROTOCOL-source.md"
+            protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
+            output_root = workspace / "campaign"
+            self.assertEqual(module.run_campaign(
+                output_root, True,
+                **self.execution_options(protocol, FailingProcess())), 1)
+            orphan_run = output_root / "no_disturbance_r01_02_v5a"
+            orphan_attempt = orphan_run / "attempt-004"
+            orphan_attempt.mkdir(parents=True)
+            sentinel = orphan_attempt / "orphan.txt"
+            sentinel.write_text("preserve orphan", encoding="utf-8")
+            process = SuccessfulThenFailingProcess()
+
+            result = module.run_campaign(
+                output_root, True, resume=True,
+                **self.execution_options(protocol, process))
+
+            self.assertEqual(result, 1)
+            manifest = json.loads(
+                (output_root / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                manifest["runs"][1]["output_dir"],
+                "no_disturbance_r01_02_v5a/attempt-005",
+            )
+            self.assertEqual(sentinel.read_text(encoding="utf-8"),
+                             "preserve orphan")
+
+    def test_attempt_is_written_in_progress_before_process_launch(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            protocol = workspace / "PROTOCOL-source.md"
+            protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
+            output_root = workspace / "campaign"
+
+            result = module.run_campaign(
+                output_root, True,
+                **self.execution_options(
+                    protocol, ManifestCheckingProcess(output_root)))
+
+            self.assertEqual(result, 1)
 
     # Production mutation caught: launching a resume before checking all
     # protocol/source/config provenance recorded by the existing campaign.
@@ -614,6 +778,22 @@ class ProcessSupervisionTest(unittest.TestCase):
                     except ProcessLookupError:
                         pass
 
+    def test_interrupt_and_unexpected_error_terminate_process_group(self):
+        module = load_runner()
+        for failure in (KeyboardInterrupt(), RuntimeError("unexpected")):
+            with self.subTest(failure=type(failure).__name__):
+                process = mock.Mock(pid=4321, returncode=-15)
+                process.wait.side_effect = [failure, -15]
+                with tempfile.TemporaryDirectory() as directory:
+                    log_path = Path(directory) / "run.log"
+                    with mock.patch.object(
+                            module.subprocess, "Popen", return_value=process), \
+                            mock.patch.object(module.os, "killpg") as killpg:
+                        with self.assertRaises(type(failure)):
+                            module._supervise(
+                                ["unused"], Path(directory), log_path, 10.0)
+                    killpg.assert_called_once_with(4321, signal.SIGTERM)
+
     # Production mutation caught: ignoring either a low base-height sample or
     # a case-varied recognized safety-stop marker in the preserved log.
     def test_runner_rejects_fall_and_case_insensitive_safety_markers(self):
@@ -645,6 +825,108 @@ class ProcessSupervisionTest(unittest.TestCase):
                         module._inspect_attempt(spec, attempt_dir, log_path)
 
 
+class PortableSourceLockTest(unittest.TestCase):
+    SOURCE_COMMIT = "8e7dd40b0eb085bc91b6c20fd660b0171774c8b9"
+
+    def test_git_lock_creation_rejects_dirty_critical_tracked_file(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            source_root = Path(directory)
+            critical = source_root / "critical.txt"
+            critical.write_text("clean\n", encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=source_root, check=True,
+                           capture_output=True)
+            subprocess.run(["git", "add", "critical.txt"], cwd=source_root,
+                           check=True)
+            subprocess.run([
+                "git", "-c", "user.name=Test", "-c",
+                "user.email=test@example.com", "commit", "-m", "initial",
+            ], cwd=source_root, check=True, capture_output=True)
+            commit = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=source_root,
+                text=True).strip()
+            critical.write_text("dirty\n", encoding="utf-8")
+
+            with mock.patch.object(
+                    module.campaign_schema, "EXECUTION_CRITICAL_FILES",
+                    ("critical.txt",)):
+                with self.assertRaisesRegex(ValueError, "dirty critical"):
+                    module.create_source_lock(source_root, commit)
+
+    def test_portable_lock_rejects_nonmapping_file_table_cleanly(self):
+        module = load_runner()
+        malformed = {
+            "schema_version": module.campaign_schema.SOURCE_LOCK_VERSION,
+            "source_commit": self.SOURCE_COMMIT,
+            "files": list(module.campaign_schema.EXECUTION_CRITICAL_FILES),
+        }
+        with self.assertRaisesRegex(ValueError, "source-lock schema"):
+            module._verify_source_lock(module.SOURCE_ROOT, malformed)
+
+    def test_execution_uses_portable_lock_without_resolving_git(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            protocol = workspace / "PROTOCOL.md"
+            protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
+            source_lock = workspace / "source-lock.json"
+            write_portable_source_lock(
+                module, module.SOURCE_ROOT, source_lock, self.SOURCE_COMMIT)
+            with mock.patch.object(
+                    module.subprocess, "check_output",
+                    side_effect=AssertionError("Git must not be resolved")):
+                result = module.run_campaign(
+                    workspace / "campaign", True,
+                    protocol=protocol,
+                    source_commit=self.SOURCE_COMMIT,
+                    source_lock=source_lock,
+                    process_runner=SuccessfulEvidenceProcess(),
+                )
+            self.assertEqual(result, 0)
+            manifest = json.loads(
+                (workspace / "campaign" / "manifest.json").read_text(
+                    encoding="utf-8"))
+            self.assertEqual(manifest["source_lock"]["source_commit"],
+                             self.SOURCE_COMMIT)
+            self.assertEqual(set(manifest["source_lock"]["files"]), set(
+                module.campaign_schema.EXECUTION_CRITICAL_FILES))
+
+    def test_execution_rechecks_every_critical_hash_before_each_attempt(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            source_root = workspace / "portable-source"
+            source_root.mkdir()
+            critical = source_root / "critical.txt"
+            critical.write_text("locked\n", encoding="utf-8")
+            protocol = workspace / "PROTOCOL.md"
+            protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
+            source_lock = workspace / "source-lock.json"
+
+            class DriftAfterFirstAttempt(SuccessfulEvidenceProcess):
+                def __call__(self, command, cwd, log_path, timeout_s):
+                    result = super().__call__(command, cwd, log_path, timeout_s)
+                    critical.write_text("drifted\n", encoding="utf-8")
+                    return result
+
+            with mock.patch.object(
+                    module.campaign_schema, "EXECUTION_CRITICAL_FILES",
+                    ("critical.txt",)):
+                write_portable_source_lock(
+                    module, source_root, source_lock, self.SOURCE_COMMIT)
+                process = DriftAfterFirstAttempt()
+                with self.assertRaisesRegex(ValueError, "source-lock drift"):
+                    module.run_campaign(
+                        workspace / "campaign", True,
+                        protocol=protocol,
+                        source_commit=self.SOURCE_COMMIT,
+                        source_lock=source_lock,
+                        source_root=source_root,
+                        process_runner=process,
+                    )
+            self.assertEqual(len(process.commands), 1)
+
+
 class CommandLineTest(unittest.TestCase):
     # Production mutation caught: allowing ambiguous execution mode, implicit
     # execution provenance, or resume on a dry-run.
@@ -660,6 +942,11 @@ class CommandLineTest(unittest.TestCase):
                     "--execute", "--source-commit", "1" * 40,
                 ])
             with self.assertRaises(SystemExit):
+                module.parse_args([
+                    "--execute", "--protocol", "PROTOCOL.md",
+                    "--source-commit", "1" * 40,
+                ])
+            with self.assertRaises(SystemExit):
                 module.parse_args(["--dry-run", "--resume"])
             with self.assertRaises(SystemExit):
                 module.parse_args(["--dry-run", "--execute"])
@@ -667,6 +954,7 @@ class CommandLineTest(unittest.TestCase):
         args = module.parse_args([
             "--execute", "--resume", "--protocol", "PROTOCOL.md",
             "--source-commit", "8e7dd40b0eb085bc91b6c20fd660b0171774c8b9",
+            "--source-lock", "source-lock.json",
         ])
         self.assertTrue(args.execute)
         self.assertTrue(args.resume)

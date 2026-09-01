@@ -2,6 +2,7 @@
 
 import csv
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -150,7 +151,7 @@ def paired_conditions_fixture(scenario, seed):
     return result
 
 
-def launch_command_fixture(method, scenario, seed, run_id):
+def launch_command_fixture(method, scenario, seed, run_dir):
     scenarios = {
         "no_disturbance": {
             "duration": "15.0", "enable_wrench": "false",
@@ -180,10 +181,10 @@ def launch_command_fixture(method, scenario, seed, run_id):
         "roslaunch", "legged_controllers", "myrbf_shadow_gazebo.launch",
         "robot_type:=go2", "gui:=false", "gazebo_seed:=%d" % seed,
         "duration:=" + scenario_args["duration"],
-        "state_output:=" + run_id + "/state.csv",
-        "shadow_output:=" + run_id + "/shadow.csv",
-        "wrench_output:=" + run_id + "/wrench.csv",
-        "motion_output:=" + run_id + "/motion.csv",
+        "state_output:=" + str(run_dir / "state.csv"),
+        "shadow_output:=" + str(run_dir / "shadow.csv"),
+        "wrench_output:=" + str(run_dir / "wrench.csv"),
+        "motion_output:=" + str(run_dir / "motion.csv"),
         "enable_shadow:=true", "enable_control_injection:=true",
         "control_gain:=0.1", "control_force_limit:=3.0",
         "control_rate_limit:=5.0", "myrbf_config:=" + config,
@@ -219,7 +220,8 @@ def build_complete_campaign(root):
         start_ros = 100.0
         shadow_rows = []
         state_rows = [{
-            "ros_time": "99.75", "wall_elapsed": "-0.25",
+            "ros_time": "99.75", "campaign_start_ros": "100.0",
+            "wall_elapsed": "-0.25",
             "base_x": "nan", "base_y": "nan", "base_z": "nan",
             "observation_base_yaw": "nan",
             "observation_base_pitch": "nan",
@@ -243,6 +245,8 @@ def build_complete_campaign(root):
             response = 0.0 if elapsed <= onset else 0.03
             target = -external
             shadow_rows.append({
+                "campaign_start_ros": "100.0",
+                "wall_elapsed": "%.2f" % elapsed,
                 "time_s": "%.2f" % ros_time,
                 "estimate_after_fy_n": "%.12f" % target,
                 "actual_base_y_m": "%.6f" % (2.0 + response),
@@ -261,6 +265,7 @@ def build_complete_campaign(root):
             })
             state_rows.append({
                 "ros_time": "%.2f" % ros_time,
+                "campaign_start_ros": "100.0",
                 "wall_elapsed": "%.2f" % elapsed,
                 "base_x": "0.0", "base_y": "%.6f" % (2.0 + response),
                 "base_z": "0.34",
@@ -272,6 +277,7 @@ def build_complete_campaign(root):
             })
             wrench_rows.append({
                 "ros_time": "%.2f" % ros_time,
+                "campaign_start_ros": "100.0",
                 "wall_elapsed": "%.2f" % elapsed,
                 "fx": "0", "fy": "%.12f" % external, "fz": "0",
                 "tx": "0", "ty": "0", "tz": "0",
@@ -281,6 +287,7 @@ def build_complete_campaign(root):
             })
             motion_rows.append({
                 "ros_time": "%.2f" % ros_time,
+                "campaign_start_ros": "100.0",
                 "wall_elapsed": "%.2f" % elapsed,
                 "active": "1" if motion_active else "0",
                 "gait": "static_walk" if motion_active else "stance",
@@ -305,7 +312,7 @@ def build_complete_campaign(root):
             "config_path": schema.METHOD_CONFIGS[method],
             "config_sha256": schema.METHOD_CONFIG_SHA256[method],
             "command": launch_command_fixture(
-                method, scenario, seed, run_id),
+                method, scenario, seed, run_dir),
             "started_at": "2026-09-01T00:00:00Z",
             "finished_at": "2026-09-01T00:00:18Z",
             "exit_code": 0,
@@ -334,11 +341,25 @@ def build_complete_campaign(root):
                     "stop_s": duration, "span_s": duration,
                 },
             },
+            "campaign_start_ros": 100.0,
         })
+    source_lock = {
+        "schema_version": schema.SOURCE_LOCK_VERSION,
+        "source_commit": "0b0544906739e33341075725b92ebe2c34da7eb0",
+        "files": {
+            relative: "0" * 64
+            for relative in schema.EXECUTION_CRITICAL_FILES
+        },
+    }
+    source_lock_sha256 = hashlib.sha256(json.dumps(
+        source_lock, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")).hexdigest()
     manifest = {
         "schema_version": schema.SCHEMA_VERSION,
         "protocol_sha256": schema.FROZEN_PROTOCOL_SHA256,
         "protocol_snapshot": schema.protocol_snapshot(),
+        "source_lock": source_lock,
+        "source_lock_sha256": source_lock_sha256,
         "runs": runs,
     }
     (root / "manifest.json").write_text(
@@ -456,7 +477,8 @@ class CampaignSchemaTest(unittest.TestCase):
             },
         })
         self.assertEqual(schema.REQUIRED_MANIFEST_FIELDS, (
-            "schema_version", "protocol_sha256", "protocol_snapshot", "runs",
+            "schema_version", "protocol_sha256", "protocol_snapshot",
+            "source_lock", "source_lock_sha256", "runs",
         ))
         self.assertEqual(schema.REQUIRED_RUN_FIELDS, (
             "run_id", "method", "scenario", "repeat", "seed", "order",
@@ -465,6 +487,7 @@ class CampaignSchemaTest(unittest.TestCase):
             "started_at", "finished_at", "exit_code", "controller_rows",
             "estimator_rows", "finite", "safety_stop_detected", "complete",
             "output_dir", "attempt_history", "observed_spans",
+            "campaign_start_ros",
         ))
         self.assertEqual(schema.paired_conditions("sine_fy", 4103), {
             "scenario": "sine_fy", "seed": 4103, "duration_s": 18.0,
@@ -478,7 +501,7 @@ class CampaignSchemaTest(unittest.TestCase):
         })
         self.assertEqual(schema.REQUIRED_CSV_FIELDS["state.csv"],
                          (
-                             "ros_time", "wall_elapsed",
+                             "ros_time", "campaign_start_ros", "wall_elapsed",
                              "base_x", "base_y", "base_z",
                              "observation_base_yaw",
                              "observation_base_pitch",
@@ -486,7 +509,8 @@ class CampaignSchemaTest(unittest.TestCase):
                              "base_vx", "base_vy", "base_vz",
                          ))
         self.assertEqual(schema.REQUIRED_CSV_FIELDS["motion.csv"], (
-            "ros_time", "wall_elapsed", "active", "gait", "vx", "vy",
+            "ros_time", "campaign_start_ros", "wall_elapsed",
+            "active", "gait", "vx", "vy",
             "yaw_rate",
         ))
 
@@ -687,6 +711,26 @@ class CampaignValidationTest(unittest.TestCase):
 
                     with self.assertRaisesRegex(ValueError,
                                                 "launch command"):
+                        module.validate_campaign(manifest, root)
+
+    def test_manifest_command_requires_exact_order_and_attempt_outputs(self):
+        module = load_analyzer()
+        for mutation in ("order", "output"):
+            with self.subTest(mutation=mutation):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    command = manifest["runs"][0]["command"]
+                    if mutation == "order":
+                        command[3], command[4] = command[4], command[3]
+                    else:
+                        index = next(
+                            i for i, value in enumerate(command)
+                            if value.startswith("state_output:=")
+                        )
+                        command[index] = "state_output:=/tmp/wrong/state.csv"
+
+                    with self.assertRaisesRegex(ValueError, "launch command"):
                         module.validate_campaign(manifest, root)
 
     # Production mutation caught: validating the seed under the unused
@@ -1401,6 +1445,35 @@ class CampaignValidationTest(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError,
                                                 "row/span claims"):
                         module.validate_campaign(manifest, root)
+
+    def test_manifest_span_claims_reject_nonfinite_values(self):
+        module = load_analyzer()
+        for value in (float("nan"), float("inf"), -float("inf")):
+            with self.subTest(value=value):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    manifest["runs"][0]["observed_spans"][
+                        "controller"]["span_s"] = value
+
+                    with self.assertRaisesRegex(ValueError,
+                                                "row/span claims"):
+                        module.validate_campaign(manifest, root)
+
+    def test_analyzer_rejects_evidence_with_a_different_campaign_start(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][0]
+            path = root / run["run_id"] / "motion.csv"
+            rows = read_csv(path)
+            for row in rows:
+                row["campaign_start_ros"] = "101.0"
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "campaign start"):
+                module.validate_campaign(manifest, root)
 
     # Production mutation caught: checking span only and accepting a complete-
     # length stream that starts after the shared 5% startup allowance.

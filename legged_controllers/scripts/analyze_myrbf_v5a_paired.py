@@ -168,30 +168,26 @@ def _run_directory(root, run):
     return directory
 
 
-def _validate_launch_command(run):
+def _validate_launch_command(run, directory):
     command = run["command"]
     if (not isinstance(command, list) or not command or
             any(not isinstance(argument, str) or not argument
                 for argument in command)):
         raise ValueError("run command argument list is invalid")
-    prefix_length = len(campaign_schema.LAUNCH_PREFIX)
-    if tuple(command[:prefix_length]) != campaign_schema.LAUNCH_PREFIX:
-        raise ValueError("run launch command has the wrong executable or launch file")
-    arguments = {}
-    for argument in command[prefix_length:]:
-        if ":=" not in argument:
-            raise ValueError("run launch command contains a malformed argument")
-        name, value = argument.split(":=", 1)
-        if not name or not value or name in arguments:
-            raise ValueError("run launch command contains an invalid argument")
-        arguments[name] = value
-    expected = campaign_schema.expected_launch_arguments(
-        run["method"], run["scenario"], run["seed"])
-    expected_names = set(expected) | set(campaign_schema.LAUNCH_OUTPUT_ARGUMENTS)
-    if set(arguments) != expected_names:
-        raise ValueError("run launch command arguments do not match frozen schema")
-    if any(arguments[name] != value for name, value in expected.items()):
-        raise ValueError("run launch command settings do not match frozen schema")
+    outputs = {
+        "state_output": directory / "state.csv",
+        "shadow_output": directory / "shadow.csv",
+        "wrench_output": directory / "wrench.csv",
+        "motion_output": directory / "motion.csv",
+    }
+    expected = list(campaign_schema.LAUNCH_PREFIX) + [
+        "%s:=%s" % (name, value)
+        for name, value in campaign_schema.ordered_launch_arguments(
+            run["method"], run["scenario"], run["seed"], outputs)
+    ]
+    if command != expected:
+        raise ValueError(
+            "run launch command does not match exact ordered attempt command")
 
 
 def _initial_state_difference(field, left, right):
@@ -229,9 +225,14 @@ def _claims_match(recorded, observed):
                 return False
         else:
             try:
-                difference = abs(float(recorded[field]) - observed[field])
+                recorded_value = float(recorded[field])
+                observed_value = float(observed[field])
             except (TypeError, ValueError):
                 return False
+            if (not math.isfinite(recorded_value) or
+                    not math.isfinite(observed_value)):
+                return False
+            difference = abs(recorded_value - observed_value)
             if difference > 1e-9:
                 return False
     return True
@@ -261,6 +262,18 @@ def _validate_row_span_claims(run, directory, state):
         "wrench": (_span_claim(wrench, "wall_elapsed")
                    if wrench is not None else None),
     }
+    campaign_start_ros = run["campaign_start_ros"]
+    try:
+        campaign_start_ros = float(campaign_start_ros)
+    except (TypeError, ValueError):
+        raise ValueError("run campaign start is invalid")
+    streams = {"shadow": shadow, "state": state, "motion": motion}
+    if wrench is not None:
+        streams["wrench"] = wrench
+    if (not math.isfinite(campaign_start_ros) or
+            any(abs(row["campaign_start_ros"] - campaign_start_ros) > 1e-9
+                for rows in streams.values() for row in rows)):
+        raise ValueError("evidence campaign start does not match manifest")
     recorded = run["observed_spans"]
     if (not isinstance(recorded, dict) or
             set(recorded) != set(campaign_schema.OBSERVED_STREAMS)):
@@ -297,6 +310,25 @@ def validate_campaign(manifest, root):
     expected_snapshot = campaign_schema.protocol_snapshot()
     if manifest["protocol_snapshot"] != expected_snapshot:
         raise ValueError("protocol snapshot does not match frozen campaign schema")
+    source_lock = manifest["source_lock"]
+    source_files = (
+        source_lock.get("files") if isinstance(source_lock, dict) else None
+    )
+    if (not isinstance(source_lock, dict) or
+            source_lock.get("schema_version") !=
+            campaign_schema.SOURCE_LOCK_VERSION or
+            not isinstance(source_files, dict) or
+            set(source_files) !=
+            set(campaign_schema.EXECUTION_CRITICAL_FILES) or
+            any(not isinstance(value, str) or len(value) != 64 or
+                any(character not in "0123456789abcdef" for character in value)
+                for value in source_files.values())):
+        raise ValueError("manifest source lock is invalid")
+    source_lock_hash = hashlib.sha256(json.dumps(
+        source_lock, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")).hexdigest()
+    if manifest["source_lock_sha256"] != source_lock_hash:
+        raise ValueError("manifest source-lock hash mismatch")
     protocol_path = Path(root) / campaign_schema.PROTOCOL_FILENAME
     if not protocol_path.is_file():
         raise ValueError("frozen PROTOCOL.md is missing from campaign root")
@@ -359,7 +391,8 @@ def validate_campaign(manifest, root):
                 raise ValueError("paired conditions differ within pair")
         else:
             pair_conditions[pair_key] = run["paired_conditions"]
-        _validate_launch_command(run)
+        directory = _run_directory(root, run)
+        _validate_launch_command(run, directory)
         if not isinstance(run["safety_stop_detected"], bool):
             raise ValueError("run safety_stop_detected must be boolean")
         if run["safety_stop_detected"]:
@@ -368,7 +401,6 @@ def validate_campaign(manifest, root):
                 not run["complete"] or run["controller_rows"] <= 0 or
                 run["estimator_rows"] <= 0):
             raise ValueError("run %s is not complete and usable" % run["run_id"])
-        directory = _run_directory(root, run)
         if not directory.is_dir():
             raise ValueError("run directory is missing: %s" % run["run_id"])
         _validate_safety_log(directory)
@@ -390,6 +422,8 @@ def validate_campaign(manifest, root):
     if actual != expected:
         raise ValueError(
             "incomplete campaign: expected 30 exact runs, found %d" % len(runs))
+    if source_commit != source_lock.get("source_commit"):
+        raise ValueError("manifest source-lock commit differs from runs")
 
 
 def _read_csv(path, required_fields, string_fields=(), skip_leading_nonfinite=False):
@@ -647,10 +681,12 @@ def analyze_run(run, root):
     _validate_stream_continuity(shadow, "time_s", "controller times")
     _validate_stream_continuity(state, "ros_time", "state times")
     state_start_elapsed = state[0]["wall_elapsed"]
-    ros_origin = state[0]["ros_time"] - state_start_elapsed
+    campaign_start_ros = float(run["campaign_start_ros"])
+    if not math.isfinite(campaign_start_ros):
+        raise ValueError("run campaign start is invalid")
     _validate_full_run_coverage(
         shadow, "time_s", scenario_spec["duration_s"], "controller",
-        shadow[0]["time_s"] - ros_origin)
+        shadow[0]["time_s"] - campaign_start_ros)
     _validate_full_run_coverage(
         state, "ros_time", scenario_spec["duration_s"], "state",
         state_start_elapsed)
@@ -667,6 +703,10 @@ def analyze_run(run, root):
             wrench_path,
             campaign_schema.REQUIRED_CSV_FIELDS["wrench.csv"],
         )
+    timing_streams = (shadow, state, motion) + ((wrench,) if wrench else ())
+    if any(abs(row["campaign_start_ros"] - campaign_start_ros) > 1e-9
+           for rows in timing_streams for row in rows):
+        raise ValueError("evidence campaign start does not match manifest")
 
     if not scenario_spec["wrench_required"]:
         if wrench is not None:

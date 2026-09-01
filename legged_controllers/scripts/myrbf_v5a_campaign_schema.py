@@ -4,9 +4,43 @@ import copy
 
 
 SCHEMA_VERSION = 1
+SOURCE_LOCK_VERSION = 1
 PROTOCOL_FILENAME = "PROTOCOL.md"
 FROZEN_PROTOCOL_SHA256 = (
     "e6004dbbbc69b81fc58a8567196d46adf84c14dd2eee1b1acee656cca924c484"
+)
+
+EXECUTION_CRITICAL_FILES = (
+    "legged_controllers/CMakeLists.txt",
+    "legged_controllers/package.xml",
+    "legged_controllers/include/legged_controllers/LeggedController.h",
+    "legged_controllers/src/LeggedController.cpp",
+    "legged_controllers/scripts/myrbf_v5a_campaign_schema.py",
+    "legged_controllers/scripts/run_myrbf_v5a_paired_campaign.py",
+    "legged_controllers/scripts/analyze_myrbf_v5a_paired.py",
+    "legged_controllers/scripts/myrbf_campaign_timing.py",
+    "legged_controllers/scripts/record_stage8c.py",
+    "legged_controllers/scripts/record_myrbf_shadow.py",
+    "legged_controllers/scripts/publish_myrbf_motion.py",
+    "legged_controllers/scripts/apply_myrbf_wrench.py",
+    "legged_controllers/scripts/unpause_when_controller_ready.py",
+    "legged_controllers/launch/myrbf_shadow_gazebo.launch",
+    "legged_controllers/launch/load_controller.launch",
+    "legged_controllers/config/controllers.yaml",
+    "legged_controllers/config/go2/task.info",
+    "legged_controllers/config/go2/reference.info",
+    "legged_controllers/config/go2/gait.info",
+    "legged_controllers/config/go2/myrbf_shadow_v4_go2.yaml",
+    "legged_controllers/config/go2/myrbf_shadow_v5a_go2.yaml",
+    "legged_examples/legged_unitree/legged_unitree_description/launch/empty_world.launch",
+    "legged_examples/legged_unitree/legged_unitree_description/urdf/robot.xacro",
+    "legged_examples/legged_unitree/legged_unitree_description/urdf/common/materials.xacro",
+    "legged_examples/legged_unitree/legged_unitree_description/urdf/common/leg.xacro",
+    "legged_examples/legged_unitree/legged_unitree_description/urdf/common/gazebo.xacro",
+    "legged_examples/legged_unitree/legged_unitree_description/urdf/common/imu.xacro",
+    "legged_examples/legged_unitree/legged_unitree_description/urdf/go2/const.xacro",
+    "legged_gazebo/config/default.yaml",
+    "legged_gazebo/worlds/empty_world.world",
 )
 
 METHODS = ("V4", "V5-A")
@@ -161,7 +195,8 @@ GATE_THRESHOLDS = {
 }
 
 REQUIRED_MANIFEST_FIELDS = (
-    "schema_version", "protocol_sha256", "protocol_snapshot", "runs",
+    "schema_version", "protocol_sha256", "protocol_snapshot",
+    "source_lock", "source_lock_sha256", "runs",
 )
 REQUIRED_RUN_FIELDS = (
     "run_id",
@@ -186,11 +221,14 @@ REQUIRED_RUN_FIELDS = (
     "output_dir",
     "attempt_history",
     "observed_spans",
+    "campaign_start_ros",
 )
 OBSERVED_STREAMS = ("controller", "estimator", "motion", "wrench")
 
 REQUIRED_CSV_FIELDS = {
     "shadow.csv": (
+        "campaign_start_ros",
+        "wall_elapsed",
         "time_s",
         "estimate_after_fy_n",
         "actual_base_y_m",
@@ -208,6 +246,7 @@ REQUIRED_CSV_FIELDS = {
     ),
     "state.csv": (
         "ros_time",
+        "campaign_start_ros",
         "wall_elapsed",
         "base_x",
         "base_y",
@@ -221,6 +260,7 @@ REQUIRED_CSV_FIELDS = {
     ),
     "wrench.csv": (
         "ros_time",
+        "campaign_start_ros",
         "wall_elapsed",
         "fx",
         "fy",
@@ -233,6 +273,7 @@ REQUIRED_CSV_FIELDS = {
     ),
     "motion.csv": (
         "ros_time",
+        "campaign_start_ros",
         "wall_elapsed",
         "active",
         "gait",
@@ -318,6 +359,8 @@ def protocol_snapshot():
     ]
     return copy.deepcopy({
         "schema_version": SCHEMA_VERSION,
+        "source_lock_version": SOURCE_LOCK_VERSION,
+        "execution_critical_files": list(EXECUTION_CRITICAL_FILES),
         "protocol_file": PROTOCOL_FILENAME,
         "protocol_sha256": FROZEN_PROTOCOL_SHA256,
         "methods": methods,

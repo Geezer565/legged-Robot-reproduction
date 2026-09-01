@@ -4,10 +4,8 @@ import argparse
 import csv
 from pathlib import Path
 import threading
-import time
 
-import rospy
-from std_msgs.msg import Float64MultiArray
+from myrbf_campaign_timing import CAMPAIGN_START_TOPIC, campaign_elapsed
 
 
 AXES = ("fx_n", "fy_n", "fz_n", "tx_nm", "ty_nm", "tz_nm")
@@ -62,6 +60,7 @@ def field_names():
 
 
 FIELDS = tuple(field_names())
+OUTPUT_FIELDS = ("campaign_start_ros", "wall_elapsed") + FIELDS
 
 
 def decode_diagnostic(values):
@@ -73,16 +72,23 @@ def decode_diagnostic(values):
 
 
 class Recorder:
-    def __init__(self):
+    def __init__(self, campaign_start_ros, ros_now):
         self._rows = []
         self._lock = threading.Lock()
+        self._campaign_start_ros = float(campaign_start_ros)
+        self._ros_now = ros_now
 
     def callback(self, message):
         try:
             row = decode_diagnostic(message.data)
         except ValueError as error:
+            import rospy
             rospy.logwarn_throttle(1.0, str(error))
             return
+        row["campaign_start_ros"] = self._campaign_start_ros
+        row["wall_elapsed"] = campaign_elapsed(
+            self._ros_now(), self._campaign_start_ros
+        )
         with self._lock:
             self._rows.append(row)
 
@@ -92,13 +98,16 @@ class Recorder:
         with self._lock:
             rows = list(self._rows)
         with output.open("w", encoding="utf-8", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=FIELDS)
+            writer = csv.DictWriter(handle, fieldnames=OUTPUT_FIELDS)
             writer.writeheader()
             writer.writerows(rows)
         return len(rows)
 
 
 def main():
+    import rospy
+    from std_msgs.msg import Float64, Float64MultiArray
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
     parser.add_argument("--duration", type=float, default=0.0)
@@ -107,7 +116,10 @@ def main():
         parser.error("--duration must be nonnegative")
 
     rospy.init_node("myrbf_shadow_recorder")
-    recorder = Recorder()
+    campaign_start_ros = rospy.wait_for_message(
+        CAMPAIGN_START_TOPIC, Float64, timeout=60.0
+    ).data
+    recorder = Recorder(campaign_start_ros, rospy.get_time)
     rospy.Subscriber(
         "/myrbf_shadow_diagnostics",
         Float64MultiArray,
@@ -115,10 +127,10 @@ def main():
         queue_size=1000,
     )
 
-    start = time.monotonic()
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
-        if args.duration > 0.0 and time.monotonic() - start >= args.duration:
+        if (args.duration > 0.0 and
+                campaign_elapsed(rospy.get_time(), campaign_start_ros) >= args.duration):
             break
         rate.sleep()
 
