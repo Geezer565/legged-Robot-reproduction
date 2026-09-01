@@ -169,6 +169,24 @@ class FailingProcess:
         return {"exit_code": 7, "timed_out": False}
 
 
+class GapThenFallProcess:
+    def __init__(self):
+        self.commands = []
+
+    def __call__(self, command, cwd, log_path, timeout_s):
+        self.commands.append(list(command))
+        write_valid_evidence(command, log_path)
+        arguments = command_arguments(command)
+        state_path = Path(arguments["state_output"])
+        rows = read_csv(state_path)
+        rows = [row for row in rows
+                if not 1.0 <= float(row["wall_elapsed"]) <= 2.0]
+        next(row for row in rows
+             if float(row["wall_elapsed"]) == 9.0)["base_z"] = "0.20"
+        write_csv(state_path, tuple(rows[0]), rows)
+        return {"exit_code": 0, "timed_out": False}
+
+
 class SuccessfulThenFailingProcess:
     def __init__(self):
         self.commands = []
@@ -585,6 +603,105 @@ class ResumeTest(unittest.TestCase):
             self.assertTrue(first["complete"])
             self.assertTrue((output_root / first["output_dir"] /
                              "run.log").is_file())
+
+    # Production mutation caught: calculating minimum base height only after
+    # continuity validation, which lets an earlier gap hide a later fall.
+    def test_gap_before_later_fall_records_terminal_safety_failure(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            protocol = workspace / "PROTOCOL-source.md"
+            protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
+            output_root = workspace / "campaign"
+            process = GapThenFallProcess()
+
+            result = module.run_campaign(
+                output_root, True,
+                **self.execution_options(protocol, process))
+
+            self.assertEqual(result, 1)
+            self.assertEqual(len(process.commands), 1)
+            manifest = json.loads(
+                (output_root / "manifest.json").read_text(encoding="utf-8"))
+            run = manifest["runs"][0]
+            attempt = run["attempt_history"][0]
+            self.assertEqual(attempt["status"], "safety_failed")
+            self.assertTrue(attempt["terminal_safety_failure"])
+            self.assertTrue(run["terminal_safety_failure"])
+            self.assertAlmostEqual(attempt["minimum_base_height_m"], 0.20)
+            self.assertAlmostEqual(run["minimum_base_height_m"], 0.20)
+            self.assertIn("terminal safety failure", attempt["error"])
+            self.assertIn("excessive gap", attempt["error"])
+
+    # Production mutation caught: trusting a failed manifest record whose
+    # earlier validation error left a real preserved fall unaudited.
+    def test_resume_blocks_preserved_failed_fall_before_process_launch(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            protocol = workspace / "PROTOCOL-source.md"
+            protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
+            output_root = workspace / "campaign"
+            self.assertEqual(module.run_campaign(
+                output_root, True,
+                **self.execution_options(protocol, GapThenFallProcess())), 1)
+            manifest_path = output_root / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            run = manifest["runs"][0]
+            attempt = run["attempt_history"][0]
+            for record in (run, attempt):
+                record["minimum_base_height_m"] = None
+                record["safety_stop_detected"] = False
+                record.pop("terminal_safety_failure", None)
+            attempt["status"] = "failed"
+            attempt["error"] = "state times has an excessive gap"
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            process = MustNotRunProcess()
+
+            with self.assertRaisesRegex(
+                    ValueError, "terminal safety failure.*attempt-001"):
+                module.run_campaign(
+                    output_root, True, resume=True,
+                    **self.execution_options(protocol, process))
+
+            self.assertEqual(process.commands, [])
+            self.assertFalse((output_root / "no_disturbance_r01_01_v4" /
+                              "attempt-002").exists())
+
+    # Production mutation caught: scanning only manifest-listed attempts and
+    # missing a recognized safety-stop marker in preserved orphan evidence.
+    def test_resume_blocks_orphan_safety_marker_before_process_launch(self):
+        module = load_runner()
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            protocol = workspace / "PROTOCOL-source.md"
+            protocol.write_text(PROTOCOL_TEXT, encoding="utf-8")
+            output_root = workspace / "campaign"
+            self.assertEqual(module.run_campaign(
+                output_root, True,
+                **self.execution_options(protocol, FailingProcess())), 1)
+            orphan = (output_root / "no_disturbance_r01_01_v4" /
+                      "attempt-007")
+            orphan.mkdir()
+            orphan_log = orphan / "run.log"
+            marker = ("[lEgGeD cOnTrOlLeR] sAfEtY cHeCk FaIlEd, "
+                      "sToPpInG tHe CoNtRoLlEr.\n")
+            orphan_log.write_text(marker, encoding="utf-8")
+            process = MustNotRunProcess()
+
+            with self.assertRaisesRegex(
+                    ValueError, "terminal safety failure.*attempt-007"):
+                module.run_campaign(
+                    output_root, True, resume=True,
+                    **self.execution_options(protocol, process))
+
+            self.assertEqual(process.commands, [])
+            self.assertEqual(orphan_log.read_text(encoding="utf-8"), marker)
+            self.assertFalse((output_root / "no_disturbance_r01_01_v4" /
+                              "attempt-008").exists())
 
     def test_resume_preserves_orphan_attempt_and_uses_next_unused_number(self):
         module = load_runner()

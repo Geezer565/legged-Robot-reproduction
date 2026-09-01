@@ -337,6 +337,54 @@ def _safety_stop_detected(log_path):
                for marker in campaign_schema.SAFETY_STOP_MARKERS)
 
 
+def _audit_attempt_safety(attempt_dir, log_path):
+    minimum_height = None
+    state_path = Path(attempt_dir) / "state.csv"
+    if state_path.is_file():
+        try:
+            with state_path.open(
+                    "r", encoding="utf-8", newline="") as handle:
+                reader = csv.DictReader(handle)
+                if reader.fieldnames and "base_z" in reader.fieldnames:
+                    heights = []
+                    for row in reader:
+                        try:
+                            height = float(row["base_z"])
+                        except (TypeError, ValueError):
+                            continue
+                        if math.isfinite(height):
+                            heights.append(height)
+                    if heights:
+                        minimum_height = min(heights)
+        except OSError:
+            pass
+
+    safety_stop = False
+    if Path(log_path).is_file():
+        try:
+            safety_stop = _safety_stop_detected(log_path)
+        except OSError:
+            pass
+
+    threshold = campaign_schema.GATE_THRESHOLDS["safety"][
+        "minimum_base_height_m"]
+    reasons = []
+    if minimum_height is not None and minimum_height < threshold:
+        reasons.append(
+            "minimum base height %.17g m is below %.17g m" %
+            (minimum_height, threshold)
+        )
+    if safety_stop:
+        reasons.append("recognized safety-stop marker found in run.log")
+    return {
+        "minimum_base_height_m": minimum_height,
+        "safety_stop_detected": safety_stop,
+        "terminal_safety_failure": bool(reasons),
+        "error": ("terminal safety failure: " + "; ".join(reasons)
+                  if reasons else None),
+    }
+
+
 def _inspect_attempt(spec, attempt_dir, log_path):
     scenario = campaign_schema.SCENARIOS[spec.scenario]
     duration = scenario["duration_s"]
@@ -477,6 +525,53 @@ def _safe_output_directory(output_root, relative_output):
     return resolved
 
 
+def _recorded_terminal_safety_failure(record):
+    if record.get("terminal_safety_failure") is True:
+        return True
+    if record.get("safety_stop_detected") is True:
+        return True
+    minimum_height = record.get("minimum_base_height_m")
+    return (
+        isinstance(minimum_height, (int, float)) and
+        math.isfinite(minimum_height) and
+        minimum_height < campaign_schema.GATE_THRESHOLDS["safety"][
+            "minimum_base_height_m"]
+    )
+
+
+def _block_resume_after_preserved_safety_failure(output_root, manifest):
+    for run_dir in sorted(output_root.iterdir(), key=lambda path: path.name):
+        if not run_dir.is_dir():
+            continue
+        for candidate in sorted(run_dir.iterdir(), key=lambda path: path.name):
+            if (not candidate.is_dir() or
+                    re.fullmatch(r"attempt-\d{3}", candidate.name) is None):
+                continue
+            relative_output = candidate.relative_to(output_root)
+            attempt_dir = _safe_output_directory(
+                output_root, relative_output)
+            audit = _audit_attempt_safety(
+                attempt_dir, attempt_dir / "run.log")
+            if audit["terminal_safety_failure"]:
+                raise ValueError(
+                    "resume blocked by %s in %s" %
+                    (audit["error"], relative_output.as_posix())
+                )
+
+    for run in manifest["runs"]:
+        for attempt in run["attempt_history"]:
+            if _recorded_terminal_safety_failure(attempt):
+                raise ValueError(
+                    "resume blocked by terminal safety failure in %s" %
+                    attempt.get("output_dir", run["run_id"])
+                )
+        if _recorded_terminal_safety_failure(run):
+            raise ValueError(
+                "resume blocked by terminal safety failure in %s" %
+                run.get("output_dir", run["run_id"])
+            )
+
+
 def _inspection_matches_run(inspection, run):
     return (
         run.get("controller_rows") == inspection["controller_rows"] and
@@ -568,6 +663,7 @@ def _load_resume_manifest(output_root, matrix, source_commit, source_lock,
                 raise ValueError("resume complete evidence drift: %s" % error)
             if not _inspection_matches_run(inspection, run):
                 raise ValueError("resume complete row/span drift")
+    _block_resume_after_preserved_safety_failure(output_root, manifest)
     return manifest
 
 
@@ -657,6 +753,7 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
                                for stream in campaign_schema.OBSERVED_STREAMS},
             "minimum_base_height_m": None,
             "safety_stop_detected": False,
+            "terminal_safety_failure": False,
             "finite": False,
             "campaign_start_ros": None,
         }
@@ -674,6 +771,7 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             "observed_spans": inspection["observed_spans"],
             "minimum_base_height_m": None,
             "safety_stop_detected": False,
+            "terminal_safety_failure": False,
             "finite": False,
             "campaign_start_ros": None,
             "complete": False,
@@ -690,6 +788,7 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             "finite": False,
             "campaign_start_ros": None,
             "safety_stop_detected": False,
+            "terminal_safety_failure": False,
             "complete": False,
             "output_dir": relative_output,
             "attempt_history": history,
@@ -716,17 +815,32 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
         except (OSError, ValueError) as caught:
             error = str(caught)
             inspection["safety_stop_detected"] = _safety_stop_detected(log_path)
+        safety_audit = _audit_attempt_safety(attempt_dir, log_path)
+        inspection["minimum_base_height_m"] = safety_audit[
+            "minimum_base_height_m"]
+        inspection["safety_stop_detected"] = safety_audit[
+            "safety_stop_detected"]
+        inspection["terminal_safety_failure"] = safety_audit[
+            "terminal_safety_failure"]
+        if safety_audit["terminal_safety_failure"]:
+            error = (
+                safety_audit["error"] if error is None else
+                safety_audit["error"] + "; validation error: " + error
+            )
         finished_at = _utc_now()
         complete = (
             process_result.get("exit_code") == 0 and
             not process_result.get("timed_out") and
             inspection["finite"] and
             not inspection["safety_stop_detected"] and
+            not inspection["terminal_safety_failure"] and
             error is None
         )
         attempt.update({
             "attempt": attempt_number,
-            "status": "complete" if complete else "failed",
+            "status": ("complete" if complete else
+                       "safety_failed"
+                       if inspection["terminal_safety_failure"] else "failed"),
             "output_dir": relative_output,
             "command": list(command),
             "started_at": started_at,
@@ -738,6 +852,8 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             "observed_spans": inspection["observed_spans"],
             "minimum_base_height_m": inspection["minimum_base_height_m"],
             "safety_stop_detected": inspection["safety_stop_detected"],
+            "terminal_safety_failure":
+                inspection["terminal_safety_failure"],
             "finite": inspection["finite"],
             "campaign_start_ros": inspection["campaign_start_ros"],
             "complete": complete,
@@ -752,6 +868,8 @@ def run_campaign(output_root: Path, execute: bool, **options) -> int:
             "finite": inspection["finite"],
             "campaign_start_ros": inspection["campaign_start_ros"],
             "safety_stop_detected": inspection["safety_stop_detected"],
+            "terminal_safety_failure":
+                inspection["terminal_safety_failure"],
             "complete": complete,
             "output_dir": relative_output,
             "attempt_history": history,
