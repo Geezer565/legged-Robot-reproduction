@@ -104,7 +104,7 @@ def main():
 
     campaign_start = publish_campaign_start_when_running(
         list_controller_state=controller_state,
-        diagnostic_ready=diagnostic_readiness.ready,
+        diagnostic_readiness=diagnostic_readiness,
         publish_start=lambda value: campaign_start_publisher.publish(Float64(value)),
         ros_now=rospy.get_time,
         sleep=rospy.sleep,

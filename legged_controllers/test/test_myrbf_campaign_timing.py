@@ -2,8 +2,10 @@
 
 import importlib
 import importlib.util
+import inspect
 import math
 from pathlib import Path
+import threading
 from types import SimpleNamespace
 import unittest
 from unittest import mock
@@ -32,7 +34,20 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
             window_type,
             "stable diagnostic-readiness window contract is missing",
         )
-        return window_type()
+        readiness = window_type()
+        for method in ("set_controller_running", "claim_start"):
+            self.assertTrue(
+                callable(getattr(readiness, method, None)),
+                "atomic diagnostic-readiness contract is missing %s" % method,
+            )
+        return readiness
+
+    def assert_atomic_helper_contract(self, helper):
+        self.assertIn(
+            "diagnostic_readiness",
+            inspect.signature(helper).parameters,
+            "campaign-start helper lacks the synchronized readiness contract",
+        )
 
     # Production mutation caught: publishing on controller-manager running
     # alone lets the preserved 0.024..0.248 startup burst enter the campaign
@@ -40,6 +55,7 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
     def test_preserved_startup_burst_cannot_pass_stable_readiness_window(self):
         timing = import_installed_timing()
         readiness = self.make_readiness_window(timing)
+        readiness.set_controller_running(True)
         startup_arrivals = (
             0.024, 0.031, 0.038, 0.045, 0.052, 0.059, 0.073,
             0.080, 0.087, 0.094, 0.101, 0.108, 0.115, 0.122,
@@ -59,6 +75,7 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
     def test_large_gap_resets_continuous_readiness_window(self):
         timing = import_installed_timing()
         readiness = self.make_readiness_window(timing)
+        readiness.set_controller_running(True)
 
         for step in range(21):
             self.assertFalse(readiness.observe(2.0 + 0.01 * step))
@@ -73,6 +90,7 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
         timing = import_installed_timing()
         for invalid in (math.nan, math.inf, -math.inf):
             readiness = self.make_readiness_window(timing)
+            readiness.set_controller_running(True)
             self.assertFalse(readiness.observe(3.0))
             with self.assertRaises(ValueError):
                 readiness.observe(invalid)
@@ -86,6 +104,7 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
         timing = import_installed_timing()
         for invalid in (5.10, 5.05):
             readiness = self.make_readiness_window(timing)
+            readiness.set_controller_running(True)
             self.assertFalse(readiness.observe(5.0))
             self.assertFalse(readiness.observe(5.10))
             with self.assertRaises(ValueError):
@@ -105,13 +124,14 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
 
         published = []
         readiness = self.make_readiness_window(timing)
+        readiness.set_controller_running(True)
         for step in range(51):
             readiness.observe(10.0 + 0.01 * step)
         start = timing.publish_campaign_start_when_running(
             list_controller_state=lambda: "running",
-            diagnostic_ready=readiness.ready,
+            diagnostic_readiness=readiness,
             publish_start=published.append,
-            ros_now=lambda: 100.0,
+            ros_now=lambda: 10.50,
             sleep=lambda _seconds: None,
             is_shutdown=lambda: False,
             timeout_s=30.0,
@@ -120,15 +140,33 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
 
         self.assertEqual(timing.CAMPAIGN_START_TOPIC,
                          "/myrbf_campaign_start")
-        self.assertEqual(start, 100.0)
-        self.assertEqual(published, [100.0])
+        self.assertEqual(start, 10.50)
+        self.assertEqual(published, [10.50])
         self.assertEqual(timing.campaign_elapsed(106.0, 100.0), 6.0)
 
     def test_delayed_controller_readiness_publishes_one_shared_ros_start(self):
         unpause = load_script("unpause_when_controller_ready")
+        self.assert_atomic_helper_contract(
+            unpause.publish_campaign_start_when_running)
         states = iter(("initialized", "initialized", "running"))
         published = []
         clock_reads = []
+
+        class ClaimOnFirstRunningPoll:
+            def __init__(self):
+                self.running = False
+
+            def set_controller_running(self, running):
+                self.running = running
+
+            def claim_start(self, ros_now, publish_start):
+                if not self.running:
+                    return None
+                candidate = float(ros_now())
+                publish_start(candidate)
+                return candidate
+
+        readiness = ClaimOnFirstRunningPoll()
 
         def ros_now():
             clock_reads.append("read")
@@ -136,7 +174,7 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
 
         start = unpause.publish_campaign_start_when_running(
             list_controller_state=lambda: next(states),
-            diagnostic_ready=lambda: True,
+            diagnostic_readiness=readiness,
             publish_start=published.append,
             ros_now=ros_now,
             sleep=lambda _seconds: None,
@@ -158,7 +196,7 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "diagnostic readiness"):
             timing.publish_campaign_start_when_running(
                 list_controller_state=lambda: "running",
-                diagnostic_ready=lambda: False,
+                diagnostic_readiness=self.make_readiness_window(timing),
                 publish_start=published.append,
                 ros_now=lambda: 100.0,
                 sleep=lambda _seconds: None,
@@ -173,12 +211,28 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
     # publish more than one campaign origin to the shared latched topic.
     def test_controller_and_diagnostics_publish_exactly_once(self):
         timing = import_installed_timing()
-        diagnostic_states = iter((False, False, True, True))
+        self.assert_atomic_helper_contract(
+            timing.publish_campaign_start_when_running)
         published = []
+
+        class ClaimOnThirdAttempt:
+            def __init__(self):
+                self.attempts = 0
+
+            def set_controller_running(self, _running):
+                return None
+
+            def claim_start(self, ros_now, publish_start):
+                self.attempts += 1
+                if self.attempts < 3:
+                    return None
+                candidate = float(ros_now())
+                publish_start(candidate)
+                return candidate
 
         start = timing.publish_campaign_start_when_running(
             list_controller_state=lambda: "running",
-            diagnostic_ready=lambda: next(diagnostic_states),
+            diagnostic_readiness=ClaimOnThirdAttempt(),
             publish_start=published.append,
             ros_now=lambda: 100.0,
             sleep=lambda _seconds: None,
@@ -226,15 +280,21 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
         def spin_until_late_subscriber_connects():
             late_received.append(published[-1])
 
-        diagnostic_arrivals = iter(
-            [10.0 + 0.01 * step for step in range(51)] + [100.0]
-        )
+        diagnostic_callback = []
+        ros_clock = {"now": 10.0}
 
         def subscribe(_topic, _message_type, callback, queue_size):
             self.assertEqual(queue_size, 1)
+            diagnostic_callback.append(callback)
             for _step in range(51):
                 callback(SimpleNamespace(data=[]))
+                ros_clock["now"] += 0.01
+            ros_clock["now"] = 20.0
             return SimpleNamespace()
+
+        def advance_diagnostics(_seconds):
+            diagnostic_callback[0](SimpleNamespace(data=[]))
+            ros_clock["now"] += 0.01
 
         with mock.patch.multiple(
                 unpause.rospy,
@@ -244,15 +304,108 @@ class MyRbfCampaignTimingTest(unittest.TestCase):
                 Publisher=mock.Mock(return_value=LatchedPublisher()),
                 Subscriber=mock.Mock(side_effect=subscribe),
                 is_shutdown=mock.Mock(return_value=False),
-                get_time=mock.Mock(side_effect=diagnostic_arrivals.__next__),
-                sleep=mock.DEFAULT,
+                get_time=mock.Mock(side_effect=lambda: ros_clock["now"]),
+                sleep=mock.Mock(side_effect=advance_diagnostics),
                 loginfo=mock.DEFAULT,
                 spin=mock.Mock(side_effect=spin_until_late_subscriber_connects),
         ), mock.patch.object(unpause.time, "monotonic", return_value=0.0):
             unpause.main()
 
-        self.assertEqual(published, [100.0])
-        self.assertEqual(late_received, [100.0])
+        self.assertEqual(len(published), 1)
+        self.assertAlmostEqual(published[0], 20.51)
+        self.assertEqual(late_received, published)
+
+    # Production mutation caught: accepting diagnostics before controller
+    # running lets an already-ready startup burst satisfy the start gate.
+    def test_pre_controller_arrivals_do_not_count_toward_full_window(self):
+        timing = import_installed_timing()
+        readiness = self.make_readiness_window(timing)
+        published = []
+
+        for step in range(51):
+            self.assertFalse(readiness.observe(10.0 + 0.01 * step))
+        readiness.set_controller_running(True)
+        for step in range(50):
+            self.assertFalse(readiness.observe(20.0 + 0.01 * step))
+        self.assertIsNone(
+            readiness.claim_start(lambda: 20.49, published.append))
+        self.assertTrue(readiness.observe(20.50))
+        self.assertEqual(
+            readiness.claim_start(lambda: 20.50, published.append), 20.50)
+
+        self.assertEqual(published, [20.50])
+
+    # Production mutation caught: a latched ready boolean can publish after
+    # diagnostic silence even when the selected start exceeds the max gap.
+    def test_ready_window_is_rejected_after_diagnostic_silence(self):
+        timing = import_installed_timing()
+        readiness = self.make_readiness_window(timing)
+        published = []
+
+        readiness.set_controller_running(True)
+        for step in range(51):
+            readiness.observe(30.0 + 0.01 * step)
+        self.assertTrue(readiness.ready())
+
+        self.assertIsNone(
+            readiness.claim_start(lambda: 30.56, published.append))
+        self.assertFalse(readiness.ready())
+        self.assertEqual(published, [])
+
+    # Production mutation caught: without checking the exact publication
+    # candidate, a backward ROS reset remains ready until another callback.
+    def test_backward_publication_candidate_resets_without_later_callback(self):
+        timing = import_installed_timing()
+        readiness = self.make_readiness_window(timing)
+        published = []
+
+        readiness.set_controller_running(True)
+        for step in range(51):
+            readiness.observe(40.0 + 0.01 * step)
+        self.assertTrue(readiness.ready())
+
+        self.assertIsNone(
+            readiness.claim_start(lambda: 1.0, published.append))
+        self.assertFalse(readiness.ready())
+        self.assertEqual(published, [])
+
+    # Production mutation caught: checking ready outside the observation
+    # lock lets a reset callback interleave before the final publication.
+    def test_observation_cannot_interleave_with_atomic_publication_claim(self):
+        timing = import_installed_timing()
+        readiness = self.make_readiness_window(timing)
+        published = []
+        callback_started = threading.Event()
+        callback_finished = threading.Event()
+        callback_thread = []
+
+        readiness.set_controller_running(True)
+        for step in range(51):
+            readiness.observe(50.0 + 0.01 * step)
+
+        def reset_from_callback():
+            callback_started.set()
+            with self.assertRaises(ValueError):
+                readiness.observe(1.0)
+            callback_finished.set()
+
+        def publish_while_callback_waits(candidate):
+            thread = threading.Thread(target=reset_from_callback)
+            callback_thread.append(thread)
+            thread.start()
+            self.assertTrue(callback_started.wait(timeout=1.0))
+            self.assertFalse(callback_finished.is_set())
+            published.append(candidate)
+
+        self.assertEqual(
+            readiness.claim_start(lambda: 50.50, publish_while_callback_waits),
+            50.50,
+        )
+        callback_thread[0].join(timeout=1.0)
+
+        self.assertFalse(callback_thread[0].is_alive())
+        self.assertTrue(callback_finished.is_set())
+        self.assertEqual(published, [50.50])
 
     def test_all_timing_scripts_use_shared_ros_elapsed_after_delayed_start(self):
         modules = [
