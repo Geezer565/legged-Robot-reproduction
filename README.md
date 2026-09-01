@@ -1,5 +1,14 @@
 # legged_control
 
+> 当前公开开发分支：`codex/myrbf-v5a-repeat-gate`。这里保存的是 Go2 + OCS2 的 MyRBF 接入、Gazebo 实验和验证记录；现有正式数据不是实机数据。真实 Go2 仍需先完成独立的硬件安全检查。
+
+开始阅读：
+
+- [GitHub 版本索引](docs/GITHUB_VERSION_INDEX_20260902.md)
+- [可运行版本与后续修改基线](docs/RUNNABLE_BASELINE_POLICY_20260902.md)
+- [V5-A 重复验证结果](docs/MYRBF_V5A_REPEAT_VALIDATION_RESULT_20260901.md)
+- [下一步安全与求解诊断](docs/superpowers/plans/2026-09-01-myrbf-v5a-safety-and-solver-diagnosis.md)
+
 ## 当前 Docker 环境
 
 本项目继续使用老师原有的 OCS2 环境，不另外创建依赖环境。Windows 上的启动程序和容器入口为：
