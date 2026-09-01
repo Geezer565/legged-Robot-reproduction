@@ -1,0 +1,735 @@
+#!/usr/bin/env python3
+
+import csv
+import importlib.util
+import json
+import math
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+
+
+SCRIPT = (
+    Path(__file__).resolve().parents[1]
+    / "scripts"
+    / "analyze_myrbf_v5a_paired.py"
+)
+SCHEMA_SCRIPT = SCRIPT.with_name("myrbf_v5a_campaign_schema.py")
+
+
+def load_analyzer():
+    sys.path.insert(0, str(SCRIPT.parent))
+    spec = importlib.util.spec_from_file_location(
+        "analyze_myrbf_v5a_paired", SCRIPT
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_schema():
+    spec = importlib.util.spec_from_file_location(
+        "myrbf_v5a_campaign_schema", SCHEMA_SCRIPT
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+PROTOCOL_TEXT = """# MyRBF V5-A Repeat Evidence Protocol
+
+## Frozen execution identity
+
+- Source worktree: `C:/Users/lenovo/Documents/GO2/work/myrbf_v5a_repeat_20260901`
+- Frozen candidate: `codex/myrbf-v5a-safe-update @ 51b4041`
+- Execution branch (verified): `codex/myrbf-v5a-repeat-gate @ 51b4041`
+- Evidence root: `C:/Users/lenovo/Documents/GO2/results/myrbf_v5a_repeat_20260901`
+- Locked V4 config: `legged_controllers/config/go2/myrbf_shadow_v4_go2.yaml`
+- Locked V5-A config: `legged_controllers/config/go2/myrbf_shadow_v5a_go2.yaml`
+- Reference single-run report: `C:/Users/lenovo/Documents/GO2/results/myrbf_v5a_20260901/RESULT_SUMMARY.md`
+
+The candidate, protocol, and acceptance gates are frozen before any new data is run. No parameter changes are allowed during the campaign. The two locked configuration files are identified by the SHA-256 values in `locked_inputs.sha256`.
+
+## Experiment matrix
+
+Each scenario has five paired repeats. Use one seed per pair:
+
+```text
+no_disturbance: duration=15 s, vx=0.08 m/s, force=0 N
+constant_fy:    duration=18 s, vx=0.08 m/s, Fy=+20 N, onset=6 s, force_duration=6 s
+sine_fy:        duration=18 s, vx=0.08 m/s, Fy_amplitude=15 N, frequency=0.5 Hz, onset=6 s, force_duration=6 s
+```
+
+For repeats 1, 3, and 5 run `V4 → V5-A`; for repeats 2 and 4 run `V5-A → V4`. Use seeds `4101` through `4105`, one seed per pair.
+
+### Paired-repeat fairness lock
+
+For every pair, the V4 run and the V5-A run must use the same initial state, applied external force, duration, control settings, and random seed. These values must remain identical within the pair; only the controller under test and the prescribed execution order may differ. The scenario parameters above and the per-pair seed define the shared conditions for both runs.
+
+### V5-B blocking condition
+
+V5-A repeat gate must pass before V5-B may be enabled. V5-B is prohibited for the campaign until the V5-A repeat acceptance gates below have passed.
+
+## Acceptance gates
+
+### Safety gate, every run
+
+- process exits successfully; required CSV files are complete and finite
+- no fall or safety stop; minimum base height >= 0.25 m
+- estimator freeze rate < 5%; no sustained allocator saturation longer than 0.25 s
+
+### No-disturbance gate, V5-A median relative to V4
+
+- onset-relative lateral RMS <= 1.05 x V4
+- roll RMS <= 1.05 x V4
+- applied compensation RMS <= 3.0 N
+
+### Sinusoidal-force gate, paired median
+
+- estimation RMSE <= 1.10 x V4
+- onset-relative lateral RMS improves by at least 10%
+- roll RMS <= 1.05 x V4
+
+### Constant-force gate, paired median
+
+- estimation RMSE <= 1.10 x V4
+- onset-relative lateral RMS <= 1.05 x V4
+- roll RMS <= 1.05 x V4
+
+Five repeats are a development gate, not a paper-level statistical claim.
+"""
+
+
+def write_csv(path, fieldnames, rows):
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def read_csv(path):
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def build_complete_campaign(root):
+    schema = load_schema()
+    root = Path(root)
+    (root / "PROTOCOL.md").write_text(PROTOCOL_TEXT, encoding="utf-8")
+    runs = []
+    for method, scenario, repeat, seed, order in schema.expected_run_identities():
+        run_id = "%s_r%d_%s" % (
+            scenario, repeat, method.lower().replace("-", ""))
+        run_dir = root / run_id
+        run_dir.mkdir()
+        duration = schema.SCENARIOS[scenario]["duration_s"]
+        elapsed_values = [0.25 * index
+                          for index in range(int(duration / 0.25) + 1)]
+        start_ros = 100.0
+        shadow_rows = []
+        state_rows = [{
+            "ros_time": "99.75", "base_y": "nan", "base_z": "nan",
+            "startup_extra": "not-ready",
+        }]
+        wrench_rows = []
+        motion_rows = []
+        for elapsed in elapsed_values:
+            ros_time = start_ros + elapsed
+            motion_active = 4.0 <= elapsed < 13.0
+            if scenario == "constant_fy" and 6.0 <= elapsed < 12.0:
+                external = 20.0
+            elif scenario == "sine_fy" and 6.0 <= elapsed < 12.0:
+                external = 15.0 * math.sin(
+                    2.0 * math.pi * 0.5 * (elapsed - 6.0))
+            else:
+                external = 0.0
+            onset = 4.0 if scenario == "no_disturbance" else 6.0
+            response = 0.0 if elapsed <= onset else 0.03
+            target = -external
+            shadow_rows.append({
+                "time_s": "%.2f" % ros_time,
+                "estimate_after_fy_n": "%.12f" % target,
+                "actual_base_y_m": "%.6f" % (2.0 + response),
+                "actual_base_roll_rad": "%.6f" % (0.01 + response / 3.0),
+                "requested_control_fy_n": "%.12f" % target,
+                "achieved_control_fy_n": "%.12f" % (0.8 * target),
+                "allocator_scale": "1.0",
+                "update_frozen": "0",
+                "projection_active_fx": "0",
+                "projection_active_fy": "0",
+                "projection_active_fz": "0",
+                "projection_active_tx": "0",
+                "projection_active_ty": "0",
+                "projection_active_tz": "0",
+                "retained_extra_column": "kept",
+            })
+            state_rows.append({
+                "ros_time": "%.2f" % ros_time,
+                "base_y": "%.6f" % (2.0 + response),
+                "base_z": "0.34",
+                "startup_extra": "ready",
+            })
+            wrench_rows.append({
+                "ros_time": "%.2f" % ros_time,
+                "wall_elapsed": "%.2f" % elapsed,
+                "fx": "0", "fy": "%.12f" % external, "fz": "0",
+                "tx": "0", "ty": "0", "tz": "0",
+                "service_called": "1" if 6.0 <= elapsed < 12.0 else "0",
+                "service_success": "1",
+                "clear_success": "1",
+            })
+            motion_rows.append({
+                "ros_time": "%.2f" % ros_time,
+                "wall_elapsed": "%.2f" % elapsed,
+                "active": "1" if motion_active else "0",
+                "gait": "static_walk" if motion_active else "stance",
+                "vx": "0.08" if motion_active else "0",
+                "vy": "0", "yaw_rate": "0", "publish_count": "1",
+            })
+        write_csv(run_dir / "shadow.csv", tuple(shadow_rows[0]), shadow_rows)
+        write_csv(run_dir / "state.csv", tuple(state_rows[0]), state_rows)
+        write_csv(run_dir / "wrench.csv", tuple(wrench_rows[0]), wrench_rows)
+        write_csv(run_dir / "motion.csv", tuple(motion_rows[0]), motion_rows)
+        runs.append({
+            "run_id": run_id,
+            "method": method,
+            "scenario": scenario,
+            "repeat": repeat,
+            "seed": seed,
+            "order": order,
+            "git_commit": "0b0544906739e33341075725b92ebe2c34da7eb0",
+            "config_path": schema.METHOD_CONFIGS[method],
+            "config_sha256": schema.METHOD_CONFIG_SHA256[method],
+            "command": ["synthetic", method, scenario],
+            "started_at": "2026-09-01T00:00:00Z",
+            "finished_at": "2026-09-01T00:00:18Z",
+            "exit_code": 0,
+            "controller_rows": len(shadow_rows),
+            "estimator_rows": len(state_rows) - 1,
+            "finite": True,
+            "complete": True,
+        })
+    manifest = {
+        "schema_version": schema.SCHEMA_VERSION,
+        "protocol_snapshot": schema.protocol_snapshot(),
+        "runs": runs,
+    }
+    (root / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    return manifest
+
+
+class CampaignSchemaTest(unittest.TestCase):
+    # Production mutation caught: a runner and analyzer silently using different
+    # methods, scenario timings, seeds, pair order, hashes, gates, or field names.
+    def test_protocol_snapshot_and_run_identities_are_exact(self):
+        schema = load_schema()
+
+        self.assertEqual(schema.METHODS, ("V4", "V5-A"))
+        self.assertEqual(
+            schema.SCENARIOS,
+            {
+                "no_disturbance": {
+                    "duration_s": 15.0,
+                    "gait": "static_walk",
+                    "motion_delay_s": 4.0,
+                    "motion_duration_s": 9.0,
+                    "vx_mps": 0.08,
+                    "force_axis": "fy",
+                    "force_profile": "none",
+                    "force_value_n": 0.0,
+                    "force_amplitude_n": 0.0,
+                    "force_frequency_hz": 0.0,
+                    "force_onset_s": None,
+                    "force_duration_s": 0.0,
+                },
+                "constant_fy": {
+                    "duration_s": 18.0,
+                    "gait": "static_walk",
+                    "motion_delay_s": 4.0,
+                    "motion_duration_s": 9.0,
+                    "vx_mps": 0.08,
+                    "force_axis": "fy",
+                    "force_profile": "constant",
+                    "force_value_n": 20.0,
+                    "force_amplitude_n": 0.0,
+                    "force_frequency_hz": 0.0,
+                    "force_onset_s": 6.0,
+                    "force_duration_s": 6.0,
+                },
+                "sine_fy": {
+                    "duration_s": 18.0,
+                    "gait": "static_walk",
+                    "motion_delay_s": 4.0,
+                    "motion_duration_s": 9.0,
+                    "vx_mps": 0.08,
+                    "force_axis": "fy",
+                    "force_profile": "sine",
+                    "force_value_n": 0.0,
+                    "force_amplitude_n": 15.0,
+                    "force_frequency_hz": 0.5,
+                    "force_onset_s": 6.0,
+                    "force_duration_s": 6.0,
+                },
+            },
+        )
+        identities = schema.expected_run_identities()
+        self.assertEqual(len(identities), 30)
+        self.assertEqual(len(set(identities)), 30)
+        self.assertEqual(identities[:4], [
+            ("V4", "no_disturbance", 1, 4101, 1),
+            ("V5-A", "no_disturbance", 1, 4101, 2),
+            ("V5-A", "no_disturbance", 2, 4102, 1),
+            ("V4", "no_disturbance", 2, 4102, 2),
+        ])
+        snapshot = schema.protocol_snapshot()
+        self.assertEqual(
+            snapshot["protocol_sha256"],
+            "e6004dbbbc69b81fc58a8567196d46adf84c14dd2eee1b1acee656cca924c484",
+        )
+        self.assertEqual(snapshot["methods"], {
+            "V4": {
+                "config_path": "legged_controllers/config/go2/myrbf_shadow_v4_go2.yaml",
+                "config_sha256": "c99e28eb6ff8157e2097132710ce8a044bd9e54adc209e39308bc797e1ad43fd",
+            },
+            "V5-A": {
+                "config_path": "legged_controllers/config/go2/myrbf_shadow_v5a_go2.yaml",
+                "config_sha256": "e00afb30644f08e5d859262d55d103ff69525231997b50fdca7007e38918f70c",
+            },
+        })
+        self.assertEqual(snapshot["gates"], {
+            "safety": {
+                "minimum_base_height_m": 0.25,
+                "maximum_freeze_rate": 0.05,
+                "maximum_saturation_duration_s": 0.25,
+            },
+            "no_disturbance": {
+                "lateral_rms_ratio": 1.05,
+                "roll_rms_ratio": 1.05,
+                "maximum_achieved_compensation_rms_n": 3.0,
+            },
+            "sine_fy": {
+                "estimate_rmse_ratio": 1.10,
+                "lateral_rms_ratio": 0.90,
+                "roll_rms_ratio": 1.05,
+            },
+            "constant_fy": {
+                "estimate_rmse_ratio": 1.10,
+                "lateral_rms_ratio": 1.05,
+                "roll_rms_ratio": 1.05,
+            },
+        })
+        self.assertEqual(schema.REQUIRED_MANIFEST_FIELDS,
+                         ("schema_version", "protocol_snapshot", "runs"))
+        self.assertEqual(schema.REQUIRED_RUN_FIELDS, (
+            "run_id", "method", "scenario", "repeat", "seed", "order",
+            "git_commit", "config_path", "config_sha256", "command",
+            "started_at", "finished_at", "exit_code", "controller_rows",
+            "estimator_rows", "finite", "complete",
+        ))
+        self.assertEqual(schema.REQUIRED_CSV_FIELDS["state.csv"],
+                         ("ros_time", "base_y", "base_z"))
+        self.assertEqual(schema.REQUIRED_CSV_FIELDS["motion.csv"], (
+            "ros_time", "wall_elapsed", "active", "gait", "vx", "vy",
+            "yaw_rate",
+        ))
+
+
+class OnsetRelativeMotionTest(unittest.TestCase):
+    # Production mutation caught: computing RMS from absolute lateral position
+    # instead of subtracting the position at the force-window onset.
+    def test_lateral_motion_is_relative_to_force_onset(self):
+        module = load_analyzer()
+        metric = module.onset_relative_rms(
+            [5.0, 6.0, 7.0, 8.0],
+            [1.8, 2.0, 2.03, 1.97],
+            onset=6.0,
+            stop=8.0,
+        )
+
+        self.assertAlmostEqual(metric, math.sqrt(0.0006), places=12)
+
+    # Production mutation caught: subtracting wrapped roll angles before
+    # unwrapping, which turns a small crossing of pi into a full revolution.
+    def test_roll_motion_is_unwrapped_before_onset_subtraction(self):
+        module = load_analyzer()
+        metric = module.onset_relative_rms(
+            [6.0, 7.0, 8.0],
+            [3.13, -3.13, -3.12],
+            onset=6.0,
+            stop=8.0,
+            unwrap=True,
+        )
+
+        self.assertAlmostEqual(metric, 0.0233725129273348, places=12)
+
+
+class ForceResponseMetricsTest(unittest.TestCase):
+    # Production mutation caught: comparing estimates or achieved compensation
+    # with +external force, reversing lag, or subtracting aggregate RMS values.
+    def test_delayed_sinusoid_has_expected_estimation_and_compensation_metrics(self):
+        module = load_analyzer()
+        sample_period = 0.04
+        target = [
+            10.0 * math.sin(2.0 * math.pi * index / 400.0)
+            for index in range(400)
+        ]
+        estimate = target[-2:] + target[:-2]
+        external = [-value for value in target]
+        achieved = [0.8 * value for value in target]
+        metrics = module.force_response_metrics(
+            [sample_period * index for index in range(400)],
+            external,
+            estimate,
+            target,
+            achieved,
+        )
+
+        self.assertAlmostEqual(metrics["estimate_rmse_n"],
+                               0.222135011708735, places=12)
+        self.assertGreater(metrics["estimate_correlation"], 0.999)
+        self.assertAlmostEqual(metrics["estimate_bias_n"], 0.0, places=12)
+        self.assertLessEqual(abs(metrics["response_lag_s"] - 0.08),
+                             sample_period)
+        self.assertEqual(metrics["compensation_sign_agreement"], 1.0)
+        self.assertAlmostEqual(metrics["requested_achieved_rms_gap_n"],
+                               1.4142135623731, places=12)
+
+
+class CampaignValidationTest(unittest.TestCase):
+    # Production mutation caught: rejecting valid retained extra columns or
+    # treating leading startup nan state rows as usable estimator samples.
+    def test_complete_campaign_and_startup_rows_are_accepted(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+
+            module.validate_campaign(manifest, root)
+            metrics = module.analyze_run(manifest["runs"][0], root)
+
+        self.assertEqual(metrics["scenario"], "no_disturbance")
+        self.assertEqual(metrics["analysis_onset_s"], 104.0)
+        self.assertEqual(metrics["analysis_stop_s"], 112.75)
+        self.assertEqual(metrics["minimum_base_height_m"], 0.34)
+        self.assertEqual(metrics["estimate_rmse_n"], 0.0)
+        self.assertEqual(metrics["freeze_rate"], 0.0)
+        self.assertEqual(metrics["projection_rate"], 0.0)
+
+    # Production mutation caught: accepting a 29-run campaign and therefore
+    # computing medians from an unpaired or incomplete experiment matrix.
+    def test_missing_run_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            manifest["runs"].pop()
+
+            with self.assertRaisesRegex(ValueError, "incomplete campaign"):
+                module.validate_campaign(manifest, root)
+
+    # Production mutation caught: collapsing duplicate method/scenario/repeat/
+    # seed identities into one dictionary entry and hiding a missing pair.
+    def test_duplicate_run_identity_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            manifest["runs"][-1] = dict(manifest["runs"][0])
+
+            with self.assertRaisesRegex(ValueError, "duplicate run identity"):
+                module.validate_campaign(manifest, root)
+
+    # Production mutation caught: trusting a run's claimed configuration hash
+    # without comparing it with the top-level frozen method snapshot.
+    def test_configuration_hash_mismatch_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            manifest["runs"][0]["config_sha256"] = "0" * 64
+
+            with self.assertRaisesRegex(ValueError, "configuration hash"):
+                module.validate_campaign(manifest, root)
+
+    # Production mutation caught: accepting a top-level scenario snapshot that
+    # no longer matches the analyzer/runner's frozen protocol contract.
+    def test_protocol_snapshot_drift_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            manifest["protocol_snapshot"]["scenarios"]["sine_fy"][
+                "force_duration_s"] = 5.0
+
+            with self.assertRaisesRegex(ValueError, "protocol snapshot"):
+                module.validate_campaign(manifest, root)
+
+    # Production mutation caught: allowing a nan in a controller row that is
+    # otherwise inside the usable recorded stream.
+    def test_nonfinite_usable_csv_value_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][0]
+            path = root / run["run_id"] / "shadow.csv"
+            rows = read_csv(path)
+            rows[1]["estimate_after_fy_n"] = "nan"
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "nonfinite"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: silently filling a missing diagnostic field
+    # with a default and reporting a false zero projection rate.
+    def test_missing_required_csv_field_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][0]
+            path = root / run["run_id"] / "shadow.csv"
+            rows = read_csv(path)
+            for row in rows:
+                row.pop("projection_active_tz")
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "missing required fields"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: deriving a force window from one or two noisy
+    # nonzero truth samples and presenting it as a disturbance response.
+    def test_too_few_disturbance_samples_are_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "wrench.csv"
+            rows = read_csv(path)
+            for row in rows:
+                row["fy"] = "20.0" if row["wall_elapsed"] in (
+                    "6.25", "6.50") else "0.0"
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError,
+                                        "too few disturbance samples"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: trusting a no-disturbance label while its
+    # recorded wrench truth contains a real nonzero lateral force.
+    def test_no_disturbance_rejects_nonzero_force_truth(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][0]
+            path = root / run["run_id"] / "wrench.csv"
+            rows = read_csv(path)
+            rows[20]["fy"] = "1.0"
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "nonzero force truth"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: pairing controller and estimator streams that
+    # share only a short fragment of the requested response window.
+    def test_controller_estimator_overlap_below_95_percent_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "state.csv"
+            rows = read_csv(path)
+            rows = [row for row in rows
+                    if row["ros_time"] == "99.75"
+                    or float(row["ros_time"]) <= 110.0]
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "timestamp overlap"):
+                module.analyze_run(run, root)
+
+
+def paired_metric_run(method, repeat, lateral_rms):
+    values = {
+        "run_id": "constant_fy_r%d_%s" % (repeat, method),
+        "method": method,
+        "scenario": "constant_fy",
+        "repeat": repeat,
+        "seed": 4100 + repeat,
+        "order": 1 if method == ("V4" if repeat % 2 else "V5-A") else 2,
+        "estimate_rmse_n": 1.0,
+        "estimate_correlation": 0.9,
+        "estimate_bias_n": 0.1,
+        "response_lag_s": 0.08,
+        "requested_compensation_rms_n": 2.0,
+        "achieved_compensation_rms_n": 1.5,
+        "requested_achieved_rms_gap_n": 0.5,
+        "compensation_sign_agreement": 1.0,
+        "lateral_rms_m": lateral_rms,
+        "lateral_max_m": 2.0 * lateral_rms,
+        "roll_rms_deg": 1.0,
+        "roll_max_deg": 2.0,
+        "allocator_scale_mean": 1.0,
+        "allocator_scale_min": 1.0,
+        "saturation_duration_s": 0.0,
+        "freeze_rate": 0.0,
+        "projection_rate": 0.0,
+        "minimum_base_height_m": 0.34,
+        "recovery_2s_lateral_m": 0.01,
+    }
+    return values
+
+
+def gate_summary_row(scenario, metric, v4, v5a):
+    return {
+        "scenario": scenario,
+        "metric": metric,
+        "v4_median": v4,
+        "v5a_median": v5a,
+        "median_difference": v5a - v4,
+        "median_percent_difference": (
+            100.0 * (v5a - v4) / v4 if v4 != 0.0 else None),
+        "mad_difference": 0.0,
+        "pairs": [
+            {
+                "repeat": repeat,
+                "seed": 4100 + repeat,
+                "v4": v4,
+                "v5a": v5a,
+                "difference": v5a - v4,
+                "percent_difference": (
+                    100.0 * (v5a - v4) / v4 if v4 != 0.0 else None),
+            }
+            for repeat in range(1, 6)
+        ],
+    }
+
+
+def passing_gate_summary():
+    rows = []
+    for scenario in ("no_disturbance", "constant_fy", "sine_fy"):
+        rows.extend([
+            gate_summary_row(scenario, "minimum_base_height_m", 0.30, 0.30),
+            gate_summary_row(scenario, "freeze_rate", 0.01, 0.01),
+            gate_summary_row(scenario, "saturation_duration_s", 0.25, 0.25),
+        ])
+    rows.extend([
+        gate_summary_row("no_disturbance", "lateral_rms_m", 1.0, 1.05),
+        gate_summary_row("no_disturbance", "roll_rms_deg", 2.0, 2.10),
+        gate_summary_row("no_disturbance",
+                         "achieved_compensation_rms_n", 2.5, 3.0),
+        gate_summary_row("sine_fy", "estimate_rmse_n", 10.0, 11.0),
+        gate_summary_row("sine_fy", "lateral_rms_m", 10.0, 9.0),
+        gate_summary_row("sine_fy", "roll_rms_deg", 2.0, 2.10),
+        gate_summary_row("constant_fy", "estimate_rmse_n", 10.0, 11.0),
+        gate_summary_row("constant_fy", "lateral_rms_m", 1.0, 1.05),
+        gate_summary_row("constant_fy", "roll_rms_deg", 2.0, 2.10),
+    ])
+    return rows
+
+
+class PairedSummaryAndGateTest(unittest.TestCase):
+    # Production mutation caught: aggregating runs before pairing, dropping a
+    # repeat, or computing percent change and MAD from the wrong quantities.
+    def test_five_pairs_keep_literal_points_and_hand_derived_summary(self):
+        module = load_analyzer()
+        metrics = []
+        for repeat, (v4, v5a) in enumerate(
+                zip((1.0, 2.0, 3.0, 4.0, 5.0),
+                    (0.5, 1.5, 2.5, 3.5, 4.5)), start=1):
+            metrics.append(paired_metric_run("V4", repeat, v4))
+            metrics.append(paired_metric_run("V5-A", repeat, v5a))
+
+        pairs = module.paired_differences(metrics)
+        summary = module.summarize_pairs(pairs)
+        lateral_pairs = [row for row in pairs
+                         if row["metric"] == "lateral_rms_m"]
+        lateral_summary = next(row for row in summary
+                               if row["metric"] == "lateral_rms_m")
+
+        self.assertEqual(len(lateral_pairs), 5)
+        self.assertEqual(lateral_pairs[0], {
+            "scenario": "constant_fy", "repeat": 1, "seed": 4101,
+            "metric": "lateral_rms_m", "v4": 1.0, "v5a": 0.5,
+            "difference": -0.5, "percent_difference": -50.0,
+        })
+        self.assertEqual(lateral_summary["v4_median"], 3.0)
+        self.assertEqual(lateral_summary["v5a_median"], 2.5)
+        self.assertEqual(lateral_summary["median_difference"], -0.5)
+        self.assertEqual(lateral_summary["mad_difference"], 0.0)
+        self.assertEqual(len(lateral_summary["pairs"]), 5)
+
+    # Production mutation caught: changing <= acceptance boundaries to strict
+    # comparisons or implementing the 10% sine improvement as a 10% increase.
+    def test_exact_gate_boundaries_pass(self):
+        module = load_analyzer()
+        schema = load_schema()
+
+        results = module.evaluate_gates(
+            passing_gate_summary(), schema.protocol_snapshot())
+
+        self.assertTrue(results["passed"])
+        self.assertEqual(results["decision"], "PASS_ALL")
+        self.assertTrue(results["safety"]["passed"])
+        self.assertTrue(all(item["passed"]
+                            for item in results["scenarios"].values()))
+
+    # Production mutation caught: treating the protocol's freeze-rate '< 5%'
+    # rule as '<= 5%' and allowing an unsafe run through the global gate.
+    def test_freeze_rate_equal_to_five_percent_fails(self):
+        module = load_analyzer()
+        schema = load_schema()
+        summary = passing_gate_summary()
+        row = next(item for item in summary
+                   if item["scenario"] == "constant_fy"
+                   and item["metric"] == "freeze_rate")
+        row["pairs"][2]["v5a"] = 0.05
+
+        results = module.evaluate_gates(summary, schema.protocol_snapshot())
+
+        self.assertFalse(results["passed"])
+        self.assertEqual(results["decision"], "GENERAL_FAIL")
+        self.assertFalse(results["safety"]["passed"])
+
+
+class CampaignOutputTest(unittest.TestCase):
+    # Production mutation caught: returning in-memory metrics without writing
+    # the JSON, five-point CSV summary, or one paired-line figure per scenario.
+    def test_analyze_campaign_writes_all_required_artifacts(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            build_complete_campaign(root)
+
+            result = module.analyze_campaign(root)
+
+            self.assertTrue((root / "metrics.json").is_file())
+            self.assertTrue((root / "paired_summary.csv").is_file())
+            self.assertEqual(
+                sorted(path.name for path in root.glob("paired_*.png")),
+                [
+                    "paired_constant_fy.png",
+                    "paired_no_disturbance.png",
+                    "paired_sine_fy.png",
+                ],
+            )
+            self.assertEqual(len(result["run_metrics"]), 30)
+            self.assertEqual(len(result["paired_differences"]),
+                             15 * len(module.PAIRED_METRICS))
+            self.assertIn("gate_results", result)
+            with (root / "paired_summary.csv").open(
+                    "r", encoding="utf-8", newline="") as handle:
+                rows = list(csv.DictReader(handle))
+            self.assertEqual(len(rows),
+                             3 * len(module.PAIRED_METRICS))
+            self.assertEqual(rows[0]["pair_1_repeat"], "1")
+
+
+if __name__ == "__main__":
+    unittest.main()
