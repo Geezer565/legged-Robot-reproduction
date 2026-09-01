@@ -190,6 +190,8 @@ def validate_campaign(manifest, root):
         raise ValueError("manifest runs must be a list")
     identities = []
     run_ids = set()
+    source_commit = None
+    pair_conditions = {}
     for index, run in enumerate(runs):
         if not isinstance(run, dict):
             raise ValueError("manifest run %d must be an object" % index)
@@ -216,6 +218,36 @@ def validate_campaign(manifest, root):
             raise ValueError("run configuration path does not match protocol snapshot")
         if run["config_sha256"] != method_snapshot["config_sha256"]:
             raise ValueError("run configuration hash does not match protocol snapshot")
+        commit = run["git_commit"]
+        if (not isinstance(commit, str) or len(commit) != 40 or
+                any(character not in "0123456789abcdef"
+                    for character in commit)):
+            raise ValueError("run source commit must be one exact full hash")
+        if source_commit is None:
+            source_commit = commit
+        elif commit != source_commit:
+            raise ValueError("campaign source commit differs between runs")
+        expected_conditions = campaign_schema.paired_conditions(
+            run["scenario"], run["seed"])
+        if (not isinstance(run["paired_conditions"], dict) or
+                run["paired_conditions"] != expected_conditions):
+            raise ValueError(
+                "run paired conditions do not match frozen scenario and seed")
+        pair_key = (run["scenario"], run["repeat"], run["seed"])
+        if pair_key in pair_conditions:
+            if run["paired_conditions"] != pair_conditions[pair_key]:
+                raise ValueError("paired conditions differ within pair")
+        else:
+            pair_conditions[pair_key] = run["paired_conditions"]
+        command = run["command"]
+        if (not isinstance(command, list) or not command or
+                any(not isinstance(argument, str) or not argument
+                    for argument in command)):
+            raise ValueError("run command argument list is invalid")
+        if not isinstance(run["safety_stop_detected"], bool):
+            raise ValueError("run safety_stop_detected must be boolean")
+        if run["safety_stop_detected"]:
+            raise ValueError("run %s recorded a safety stop" % run["run_id"])
         if (run["exit_code"] != 0 or not run["finite"] or
                 not run["complete"] or run["controller_rows"] <= 0 or
                 run["estimator_rows"] <= 0):
@@ -289,6 +321,12 @@ def _nearest_values(sample_times, source_rows, time_field, value_field):
                      unique_times, unique_values).tolist()
 
 
+def _validate_strictly_increasing(rows, field, label):
+    values = [row[field] for row in rows]
+    if any(right <= left for left, right in zip(values, values[1:])):
+        raise ValueError("%s must be strictly increasing" % label)
+
+
 def _validate_schedule_coverage(rows, start, stop, label):
     wall_times = [row["wall_elapsed"] for row in rows]
     if len(wall_times) < 3:
@@ -303,9 +341,13 @@ def _validate_schedule_coverage(rows, start, stop, label):
     if max(differences) > MAX_SAMPLE_GAP_FACTOR * period + 1e-12:
         raise ValueError("%s is disjoint inside the frozen window" % label)
     ros_times = [row["ros_time"] for row in rows]
-    if any(right < left - 1e-12
-           for left, right in zip(ros_times, ros_times[1:])):
-        raise ValueError("%s has nonmonotonic ROS times" % label)
+    ros_differences = [right - left
+                       for left, right in zip(ros_times, ros_times[1:])]
+    if any(value <= 0.0 for value in ros_differences):
+        raise ValueError("%s must have strictly increasing ROS times" % label)
+    ros_period = float(np.median(np.asarray(ros_differences, dtype=float)))
+    if max(ros_differences) > MAX_SAMPLE_GAP_FACTOR * ros_period + 1e-12:
+        raise ValueError("%s has an excessive ROS-time gap" % label)
     return tuple(_nearest_values(
         [start, stop], rows, "wall_elapsed", "ros_time"))
 
@@ -435,6 +477,8 @@ def analyze_run(run, root):
         campaign_schema.REQUIRED_CSV_FIELDS["state.csv"],
         skip_leading_nonfinite=True,
     )
+    _validate_strictly_increasing(shadow, "time_s", "controller times")
+    _validate_strictly_increasing(state, "ros_time", "state times")
     motion = _read_csv(
         directory / "motion.csv",
         campaign_schema.REQUIRED_CSV_FIELDS["motion.csv"],

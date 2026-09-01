@@ -113,6 +113,41 @@ def read_csv(path):
         return list(csv.DictReader(handle))
 
 
+def paired_conditions_fixture(scenario, seed):
+    scenarios = {
+        "no_disturbance": {
+            "duration_s": 15.0, "gait": "static_walk",
+            "motion_delay_s": 4.0, "motion_duration_s": 9.0,
+            "vx_mps": 0.08, "vy_mps": 0.0, "yaw_rate_rps": 0.0,
+            "wrench_required": False, "force_axis": "fy",
+            "force_profile": "none", "force_value_n": 0.0,
+            "force_amplitude_n": 0.0, "force_frequency_hz": 0.0,
+            "force_onset_s": None, "force_duration_s": 0.0,
+        },
+        "constant_fy": {
+            "duration_s": 18.0, "gait": "static_walk",
+            "motion_delay_s": 4.0, "motion_duration_s": 9.0,
+            "vx_mps": 0.08, "vy_mps": 0.0, "yaw_rate_rps": 0.0,
+            "wrench_required": True, "force_axis": "fy",
+            "force_profile": "constant", "force_value_n": 20.0,
+            "force_amplitude_n": 0.0, "force_frequency_hz": 0.0,
+            "force_onset_s": 6.0, "force_duration_s": 6.0,
+        },
+        "sine_fy": {
+            "duration_s": 18.0, "gait": "static_walk",
+            "motion_delay_s": 4.0, "motion_duration_s": 9.0,
+            "vx_mps": 0.08, "vy_mps": 0.0, "yaw_rate_rps": 0.0,
+            "wrench_required": True, "force_axis": "fy",
+            "force_profile": "sine", "force_value_n": 0.0,
+            "force_amplitude_n": 15.0, "force_frequency_hz": 0.5,
+            "force_onset_s": 6.0, "force_duration_s": 6.0,
+        },
+    }
+    result = {"scenario": scenario, "seed": seed}
+    result.update(scenarios[scenario])
+    return result
+
+
 def build_complete_campaign(root):
     schema = load_schema()
     root = Path(root)
@@ -198,6 +233,7 @@ def build_complete_campaign(root):
             "repeat": repeat,
             "seed": seed,
             "order": order,
+            "paired_conditions": paired_conditions_fixture(scenario, seed),
             "git_commit": "0b0544906739e33341075725b92ebe2c34da7eb0",
             "config_path": schema.METHOD_CONFIGS[method],
             "config_sha256": schema.METHOD_CONFIG_SHA256[method],
@@ -208,6 +244,7 @@ def build_complete_campaign(root):
             "controller_rows": len(shadow_rows),
             "estimator_rows": len(state_rows) - 1,
             "finite": True,
+            "safety_stop_detected": False,
             "complete": True,
         })
     manifest = {
@@ -333,10 +370,21 @@ class CampaignSchemaTest(unittest.TestCase):
                          ("schema_version", "protocol_snapshot", "runs"))
         self.assertEqual(schema.REQUIRED_RUN_FIELDS, (
             "run_id", "method", "scenario", "repeat", "seed", "order",
-            "git_commit", "config_path", "config_sha256", "command",
+            "paired_conditions", "git_commit", "config_path",
+            "config_sha256", "command",
             "started_at", "finished_at", "exit_code", "controller_rows",
-            "estimator_rows", "finite", "complete",
+            "estimator_rows", "finite", "safety_stop_detected", "complete",
         ))
+        self.assertEqual(schema.paired_conditions("sine_fy", 4103), {
+            "scenario": "sine_fy", "seed": 4103, "duration_s": 18.0,
+            "gait": "static_walk", "motion_delay_s": 4.0,
+            "motion_duration_s": 9.0, "vx_mps": 0.08, "vy_mps": 0.0,
+            "yaw_rate_rps": 0.0, "wrench_required": True,
+            "force_axis": "fy", "force_profile": "sine",
+            "force_value_n": 0.0, "force_amplitude_n": 15.0,
+            "force_frequency_hz": 0.5, "force_onset_s": 6.0,
+            "force_duration_s": 6.0,
+        })
         self.assertEqual(schema.REQUIRED_CSV_FIELDS["state.csv"],
                          ("ros_time", "base_y", "base_z"))
         self.assertEqual(schema.REQUIRED_CSV_FIELDS["motion.csv"], (
@@ -407,6 +455,88 @@ class ForceResponseMetricsTest(unittest.TestCase):
 
 
 class CampaignValidationTest(unittest.TestCase):
+    # Production mutation caught: accepting an empty, abbreviated, or differing
+    # source revision instead of one exact 40-character commit for all 30 runs.
+    def test_source_commit_must_be_full_and_shared_across_campaign(self):
+        module = load_analyzer()
+        mutations = (
+            ("empty", "", True),
+            ("abbreviated", "0b05449", True),
+            ("different", "1" * 40, False),
+        )
+        for name, value, change_all in mutations:
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    targets = (manifest["runs"] if change_all
+                               else manifest["runs"][:1])
+                    for run in targets:
+                        run["git_commit"] = value
+
+                    with self.assertRaisesRegex(ValueError,
+                                                "source commit"):
+                        module.validate_campaign(manifest, root)
+
+    # Production mutation caught: accepting a missing/wrong per-run fairness
+    # map or allowing the V4/V5-A members of one pair to carry different maps.
+    def test_paired_conditions_match_frozen_scenario_seed_and_pair(self):
+        module = load_analyzer()
+        for mutation in ("not_mapping", "wrong_seed", "pair_mismatch"):
+            with self.subTest(mutation=mutation):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = build_complete_campaign(root)
+                    if mutation == "not_mapping":
+                        manifest["runs"][0]["paired_conditions"] = (
+                            "no_disturbance/4101")
+                    elif mutation == "wrong_seed":
+                        manifest["runs"][0]["paired_conditions"]["seed"] = 9999
+                    else:
+                        manifest["runs"][1]["paired_conditions"]["vx_mps"] = 0.09
+
+                    with self.assertRaisesRegex(ValueError,
+                                                "paired conditions"):
+                        module.validate_campaign(manifest, root)
+
+    # Production mutation caught: accepting a shell-like command string when
+    # the provenance contract requires the exact subprocess argument list.
+    def test_manifest_command_must_be_nonempty_argument_list(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            manifest["runs"][0]["command"] = "synthetic V4 no_disturbance"
+
+            with self.assertRaisesRegex(ValueError, "command argument list"):
+                module.validate_campaign(manifest, root)
+
+    # Production mutation caught: trusting complete=true even when the runner's
+    # independent log scan recorded that a safety stop occurred.
+    def test_safety_stop_is_rejected_even_when_run_claims_complete(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            manifest["runs"][0]["safety_stop_detected"] = True
+            self.assertTrue(manifest["runs"][0]["complete"])
+
+            with self.assertRaisesRegex(ValueError, "safety stop"):
+                module.validate_campaign(manifest, root)
+
+    # Production mutation caught: accepting 0/1 or another truthy value in a
+    # field whose manifest contract requires an actual JSON boolean.
+    def test_safety_stop_detected_must_be_boolean(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            manifest["runs"][0]["safety_stop_detected"] = 0
+
+            with self.assertRaisesRegex(ValueError,
+                                        "safety_stop_detected.*boolean"):
+                module.validate_campaign(manifest, root)
+
     # Production mutation caught: rejecting valid retained extra columns or
     # a present zero-force no-disturbance file, or treating leading startup nan
     # state rows as usable estimator samples.
@@ -509,6 +639,40 @@ class CampaignValidationTest(unittest.TestCase):
             write_csv(path, tuple(rows[0]), rows)
 
             with self.assertRaisesRegex(ValueError, "nonfinite"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: validating only analysis-window controller
+    # rows and allowing an earlier duplicate time into later lag/recovery logic.
+    def test_controller_times_must_be_strictly_increasing(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][0]
+            path = root / run["run_id"] / "shadow.csv"
+            rows = read_csv(path)
+            rows[1]["time_s"] = rows[0]["time_s"]
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError,
+                                        "controller times.*strictly increasing"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: checking ordering before startup nan rows are
+    # skipped, or allowing duplicate timestamps among the usable state rows.
+    def test_usable_state_times_must_be_strictly_increasing(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = manifest["runs"][0]
+            path = root / run["run_id"] / "state.csv"
+            rows = read_csv(path)
+            rows[2]["ros_time"] = rows[1]["ros_time"]
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError,
+                                        "state times.*strictly increasing"):
                 module.analyze_run(run, root)
 
     # Production mutation caught: silently filling a missing diagnostic field
@@ -710,6 +874,49 @@ class CampaignValidationTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError,
                                         "wrench truth coverage"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: checking only wall-time spacing and allowing
+    # ROS-time interpolation to bridge a large monotonic hole in force truth.
+    def test_excessive_ros_time_gap_in_schedule_is_rejected(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "wrench.csv"
+            rows = read_csv(path)
+            for row in rows:
+                elapsed = float(row["wall_elapsed"])
+                if 8.0 <= elapsed <= 12.0:
+                    row["ros_time"] = "%.3f" % (
+                        110.0 + 0.5 * (elapsed - 8.0))
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError, "ROS-time gap"):
+                module.analyze_run(run, root)
+
+    # Production mutation caught: treating equal consecutive ROS timestamps as
+    # monotonic and silently deduplicating one applied-force observation.
+    def test_schedule_ros_times_must_be_strictly_increasing(self):
+        module = load_analyzer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = build_complete_campaign(root)
+            run = next(item for item in manifest["runs"]
+                       if item["scenario"] == "constant_fy")
+            path = root / run["run_id"] / "wrench.csv"
+            rows = read_csv(path)
+            prior = next(row for row in rows
+                         if row["wall_elapsed"] == "7.00")
+            duplicate = next(row for row in rows
+                             if row["wall_elapsed"] == "7.25")
+            duplicate["ros_time"] = prior["ros_time"]
+            write_csv(path, tuple(rows[0]), rows)
+
+            with self.assertRaisesRegex(ValueError,
+                                        "strictly increasing ROS times"):
                 module.analyze_run(run, root)
 
     # Production mutation caught: trusting a no-disturbance label while its

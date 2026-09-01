@@ -113,6 +113,7 @@ REQUIRED_RUN_FIELDS = (
     "repeat",
     "seed",
     "order",
+    "paired_conditions",
     "git_commit",
     "config_path",
     "config_sha256",
@@ -123,6 +124,7 @@ REQUIRED_RUN_FIELDS = (
     "controller_rows",
     "estimator_rows",
     "finite",
+    "safety_stop_detected",
     "complete",
 )
 
@@ -175,6 +177,14 @@ def expected_run_identities():
             for order, method in enumerate(PAIR_ORDER[repeat], start=1):
                 identities.append((method, scenario, repeat, seed, order))
     return identities
+
+
+def paired_conditions(scenario, seed):
+    if scenario not in SCENARIOS:
+        raise ValueError("unknown paired scenario")
+    conditions = {"scenario": scenario, "seed": seed}
+    conditions.update(SCENARIOS[scenario])
+    return copy.deepcopy(conditions)
 
 
 def protocol_snapshot():
