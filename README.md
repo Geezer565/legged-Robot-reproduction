@@ -7,6 +7,7 @@
 - [GitHub 版本索引](docs/GITHUB_VERSION_INDEX_20260902.md)
 - [可运行版本与后续修改基线](docs/RUNNABLE_BASELINE_POLICY_20260902.md)
 - [V5-A 重复验证结果](docs/MYRBF_V5A_REPEAT_VALIDATION_RESULT_20260901.md)
+- [实验结果绘图规范](docs/MYRBF_FIGURE_STANDARD.md)
 - [下一步安全与求解诊断](docs/superpowers/plans/2026-09-01-myrbf-v5a-safety-and-solver-diagnosis.md)
 
 ## 当前 Docker 环境

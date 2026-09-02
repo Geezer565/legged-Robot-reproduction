@@ -30,6 +30,8 @@ METHOD_COLORS = {
     "V5-A": "#009E73",
 }
 
+FIGURE_STANDARD_VERSION = "MYRBF-FIGURE-V1-20260902"
+
 TRAJECTORY_FIELDS = (
     ("x", "actual_base_x_m", "desired_base_x_m", "Base x (m)"),
     ("y", "actual_base_y_m", "desired_base_y_m", "Base y (m)"),
@@ -140,9 +142,10 @@ def common_window(cases: list[dict], start: float | None, end: float | None):
 
 
 def style_axes(axis, label: str, lower: float, upper: float, active_window):
-    axis.set_ylabel(label)
+    axis.set_ylabel(label, fontsize=10)
     axis.set_xlim(lower, upper)
-    axis.grid(True, color="#D9D9D9", linewidth=0.55, alpha=0.75)
+    axis.grid(True, color="#D9D9D9", linewidth=0.65, alpha=0.75)
+    axis.tick_params(axis="both", labelsize=9)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
     if active_window:
@@ -154,16 +157,20 @@ def style_axes(axis, label: str, lower: float, upper: float, active_window):
 
 def save_figure(figure, output_dir: Path, stem: str):
     output_dir.mkdir(parents=True, exist_ok=True)
-    figure.savefig(output_dir / f"{stem}.png", dpi=300, bbox_inches="tight")
-    figure.savefig(output_dir / f"{stem}.pdf", bbox_inches="tight")
+    # Preserve the exact 16:9 canvas so figures fit presentation pages without
+    # extra scaling or unpredictable cropping.
+    figure.savefig(output_dir / f"{stem}.png", dpi=300)
+    figure.savefig(output_dir / f"{stem}.pdf")
     plt.close(figure)
 
 
 def plot_trajectory(cases: list[dict], output_dir: Path, lower: float,
                     upper: float, active_window):
-    figure, axes = plt.subplots(2, 3, figsize=(12.0, 6.5), sharex=True)
+    figure, axes = plt.subplots(2, 3, figsize=(14.4, 8.1), sharex=True)
     axes = axes.ravel()
     for panel, (short_name, actual, desired, label) in zip(axes, TRAJECTORY_FIELDS):
+        # Measured trajectories go underneath. Targets are drawn in a second
+        # pass so their dashed lines remain visible when tracking is accurate.
         for index, case in enumerate(cases):
             data = case["data"]
             color = color_for(case["name"], index)
@@ -172,35 +179,46 @@ def plot_trajectory(cases: list[dict], output_dir: Path, lower: float,
             panel.plot(
                 [time for time, keep in zip(times, mask) if keep],
                 [value for value, keep in zip(data[actual], mask) if keep],
-                color=color, linewidth=1.05, label=case["name"],
+                color=color, linewidth=1.15, alpha=0.55,
+                zorder=2, label=case["name"],
             )
+        for index, case in enumerate(cases):
+            data = case["data"]
+            color = color_for(case["name"], index)
+            times = data["time_s"]
+            mask = [lower <= time <= upper for time in times]
             panel.plot(
                 [time for time, keep in zip(times, mask) if keep],
                 [value for value, keep in zip(data[desired], mask) if keep],
-                color=color, linewidth=0.8, linestyle="--", alpha=0.70,
+                color=color, linewidth=2.0, linestyle=(0, (7, 3)),
+                marker="o", markevery=350, markersize=3.0,
+                markerfacecolor="white", markeredgecolor=color,
+                markeredgewidth=0.9, alpha=1.0, zorder=4,
             )
-        panel.set_title(short_name, fontsize=10)
+        panel.set_title(short_name, fontsize=12)
         style_axes(panel, label, lower, upper, active_window)
     for panel in axes[3:]:
-        panel.set_xlabel("Time (s)")
+        panel.set_xlabel("Time (s)", fontsize=10)
     handles = [Line2D([0], [0], color=color_for(case["name"], index),
                       linewidth=1.4, label=case["name"])
                for index, case in enumerate(cases)]
-    handles.append(Line2D([0], [0], color="#333333", linewidth=1.0,
-                           linestyle="-", label="actual"))
-    handles.append(Line2D([0], [0], color="#333333", linewidth=1.0,
-                           linestyle="--", label="target"))
+    handles.append(Line2D([0], [0], color="#333333", linewidth=1.15,
+                           alpha=0.55, linestyle="-", label="actual"))
+    handles.append(Line2D([0], [0], color="#333333", linewidth=2.0,
+                           linestyle=(0, (7, 3)), marker="o", markersize=3.0,
+                           markerfacecolor="white", label="target"))
     figure.legend(handles=handles, loc="upper center", ncol=min(5, len(handles)),
-                  frameon=False, bbox_to_anchor=(0.5, 1.02))
-    figure.suptitle("Target–actual body trajectory tracking", y=1.07, fontsize=13)
-    figure.text(0.5, -0.01, "Shaded region: active walking interval", ha="center", fontsize=8)
-    figure.tight_layout()
+                  frameon=False, bbox_to_anchor=(0.5, 0.945), fontsize=9)
+    figure.suptitle("Target–actual body trajectory tracking", y=0.992, fontsize=15)
+    figure.text(0.5, 0.018, "Shaded region: active walking interval", ha="center", fontsize=9)
+    figure.subplots_adjust(left=0.065, right=0.985, bottom=0.09, top=0.84,
+                           wspace=0.25, hspace=0.28)
     save_figure(figure, output_dir, "01_target_actual_tracking")
 
 
 def plot_estimates(cases: list[dict], output_dir: Path, lower: float,
                    upper: float, active_window):
-    figure, axes = plt.subplots(2, 3, figsize=(12.0, 6.5), sharex=True)
+    figure, axes = plt.subplots(2, 3, figsize=(14.4, 8.1), sharex=True)
     axes = axes.ravel()
     for panel, (short_name, residual, estimate, label) in zip(axes, ESTIMATE_FIELDS):
         for index, case in enumerate(cases):
@@ -219,10 +237,10 @@ def plot_estimates(cases: list[dict], output_dir: Path, lower: float,
                 color=color, linewidth=0.55, linestyle=":", alpha=0.42,
             )
         panel.axhline(0.0, color="#666666", linewidth=0.55)
-        panel.set_title(short_name, fontsize=10)
+        panel.set_title(short_name, fontsize=12)
         style_axes(panel, label, lower, upper, active_window)
     for panel in axes[3:]:
-        panel.set_xlabel("Time (s)")
+        panel.set_xlabel("Time (s)", fontsize=10)
     handles = [Line2D([0], [0], color=color_for(case["name"], index),
                       linewidth=1.4, label=case["name"])
                for index, case in enumerate(cases)]
@@ -231,11 +249,12 @@ def plot_estimates(cases: list[dict], output_dir: Path, lower: float,
     handles.append(Line2D([0], [0], color="#333333", linewidth=1.0,
                            linestyle=":", label="observed residual"))
     figure.legend(handles=handles, loc="upper center", ncol=min(5, len(handles)),
-                  frameon=False, bbox_to_anchor=(0.5, 1.02))
-    figure.suptitle("Six-axis residual and MyRBF estimate", y=1.07, fontsize=13)
-    figure.text(0.5, -0.01, "This residual is an observation signal, not an external-force ground truth.",
-                ha="center", fontsize=8)
-    figure.tight_layout()
+                  frameon=False, bbox_to_anchor=(0.5, 0.945), fontsize=9)
+    figure.suptitle("Six-axis residual and MyRBF estimate", y=0.992, fontsize=15)
+    figure.text(0.5, 0.018, "This residual is an observation signal, not an external-force ground truth.",
+                ha="center", fontsize=9)
+    figure.subplots_adjust(left=0.065, right=0.985, bottom=0.09, top=0.84,
+                           wspace=0.25, hspace=0.28)
     save_figure(figure, output_dir, "02_six_axis_estimates")
 
 
@@ -256,11 +275,17 @@ def main() -> int:
     plot_trajectory(cases, args.output_dir, lower, upper, active_window)
     plot_estimates(cases, args.output_dir, lower, upper, active_window)
     manifest = {
+        "figure_standard": FIGURE_STANDARD_VERSION,
         "cases": [{"name": case["name"], "directory": case["directory"]}
                   for case in cases],
         "time_window_s": [lower, upper],
         "active_walking_window_s": active_window,
         "figures": ["01_target_actual_tracking", "02_six_axis_estimates"],
+        "formats": ["png_300dpi_16x9", "vector_pdf_16x9"],
+        "interpretation_note": (
+            "net_residual is an observed residual signal, not external-wrench "
+            "ground truth unless an independent reference is recorded"
+        ),
     }
     (args.output_dir / "FIGURE_MANIFEST.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
