@@ -17,6 +17,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.lines import Line2D
 
 
@@ -30,7 +31,7 @@ METHOD_COLORS = {
     "V5-A": "#009E73",
 }
 
-FIGURE_STANDARD_VERSION = "MYRBF-FIGURE-V1-20260902"
+FIGURE_STANDARD_VERSION = "MYRBF-FIGURE-V2-20260902"
 
 TRAJECTORY_FIELDS = (
     ("x", "actual_base_x_m", "desired_base_x_m", "Base x (m)"),
@@ -125,6 +126,26 @@ def color_for(name: str, index: int) -> str:
     return METHOD_COLORS.get(name, palette[index % len(palette)])
 
 
+def smooth_signal(times: list[float], values: list[float],
+                  window_s: float = 0.8) -> list[float]:
+    """Centered moving average used only for readable residual visualization."""
+    if len(times) < 3:
+        return values
+    time_array = np.asarray(times, dtype=float)
+    value_array = np.asarray(values, dtype=float)
+    positive_steps = np.diff(time_array)
+    positive_steps = positive_steps[positive_steps > 0.0]
+    if positive_steps.size == 0:
+        return values
+    window = max(3, int(round(window_s / float(np.median(positive_steps)))))
+    if window % 2 == 0:
+        window += 1
+    half = window // 2
+    padded = np.pad(value_array, (half, half), mode="edge")
+    kernel = np.ones(window, dtype=float) / window
+    return np.convolve(padded, kernel, mode="valid").tolist()
+
+
 def common_window(cases: list[dict], start: float | None, end: float | None):
     all_times = [value for case in cases for value in case["data"]["time_s"]]
     if not all_times:
@@ -179,7 +200,7 @@ def plot_trajectory(cases: list[dict], output_dir: Path, lower: float,
             panel.plot(
                 [time for time, keep in zip(times, mask) if keep],
                 [value for value, keep in zip(data[actual], mask) if keep],
-                color=color, linewidth=1.15, alpha=0.55,
+                color=color, linewidth=1.15, alpha=0.82,
                 zorder=2, label=case["name"],
             )
         for index, case in enumerate(cases):
@@ -190,8 +211,8 @@ def plot_trajectory(cases: list[dict], output_dir: Path, lower: float,
             panel.plot(
                 [time for time, keep in zip(times, mask) if keep],
                 [value for value, keep in zip(data[desired], mask) if keep],
-                color=color, linewidth=2.0, linestyle=(0, (7, 3)),
-                marker="o", markevery=350, markersize=3.0,
+                color=color, linewidth=1.65, linestyle=(0, (8, 4)),
+                marker="o", markevery=800, markersize=3.4,
                 markerfacecolor="white", markeredgecolor=color,
                 markeredgewidth=0.9, alpha=1.0, zorder=4,
             )
@@ -203,15 +224,15 @@ def plot_trajectory(cases: list[dict], output_dir: Path, lower: float,
                       linewidth=1.4, label=case["name"])
                for index, case in enumerate(cases)]
     handles.append(Line2D([0], [0], color="#333333", linewidth=1.15,
-                           alpha=0.55, linestyle="-", label="actual"))
-    handles.append(Line2D([0], [0], color="#333333", linewidth=2.0,
-                           linestyle=(0, (7, 3)), marker="o", markersize=3.0,
+                           alpha=0.82, linestyle="-", label="actual"))
+    handles.append(Line2D([0], [0], color="#333333", linewidth=1.65,
+                           linestyle=(0, (8, 4)), marker="o", markersize=3.4,
                            markerfacecolor="white", label="target"))
-    figure.legend(handles=handles, loc="upper center", ncol=min(5, len(handles)),
+    figure.legend(handles=handles, loc="upper center", ncol=len(handles),
                   frameon=False, bbox_to_anchor=(0.5, 0.945), fontsize=9)
     figure.suptitle("Target–actual body trajectory tracking", y=0.992, fontsize=15)
     figure.text(0.5, 0.018, "Shaded region: active walking interval", ha="center", fontsize=9)
-    figure.subplots_adjust(left=0.065, right=0.985, bottom=0.09, top=0.84,
+    figure.subplots_adjust(left=0.065, right=0.985, bottom=0.09, top=0.875,
                            wspace=0.25, hspace=0.28)
     save_figure(figure, output_dir, "01_target_actual_tracking")
 
@@ -229,12 +250,13 @@ def plot_estimates(cases: list[dict], output_dir: Path, lower: float,
             panel.plot(
                 [time for time, keep in zip(times, mask) if keep],
                 [value for value, keep in zip(data[estimate], mask) if keep],
-                color=color, linewidth=1.0, label=case["name"],
+                color=color, linewidth=1.25, label=case["name"],
             )
+            residual_trend = smooth_signal(times, data[residual])
             panel.plot(
                 [time for time, keep in zip(times, mask) if keep],
-                [value for value, keep in zip(data[residual], mask) if keep],
-                color=color, linewidth=0.55, linestyle=":", alpha=0.42,
+                [value for value, keep in zip(residual_trend, mask) if keep],
+                color=color, linewidth=0.9, linestyle=":", alpha=0.48,
             )
         panel.axhline(0.0, color="#666666", linewidth=0.55)
         panel.set_title(short_name, fontsize=12)
@@ -247,13 +269,13 @@ def plot_estimates(cases: list[dict], output_dir: Path, lower: float,
     handles.append(Line2D([0], [0], color="#333333", linewidth=1.0,
                            linestyle="-", label="RBF estimate"))
     handles.append(Line2D([0], [0], color="#333333", linewidth=1.0,
-                           linestyle=":", label="observed residual"))
-    figure.legend(handles=handles, loc="upper center", ncol=min(5, len(handles)),
+                           linestyle=":", label="smoothed residual (0.8 s)"))
+    figure.legend(handles=handles, loc="upper center", ncol=len(handles),
                   frameon=False, bbox_to_anchor=(0.5, 0.945), fontsize=9)
-    figure.suptitle("Six-axis residual and MyRBF estimate", y=0.992, fontsize=15)
-    figure.text(0.5, 0.018, "This residual is an observation signal, not an external-force ground truth.",
+    figure.suptitle("Six-axis RBF estimate and residual trend", y=0.992, fontsize=15)
+    figure.text(0.5, 0.018, "Residual shown as a centered 0.8 s moving average; it is not external-force ground truth.",
                 ha="center", fontsize=9)
-    figure.subplots_adjust(left=0.065, right=0.985, bottom=0.09, top=0.84,
+    figure.subplots_adjust(left=0.065, right=0.985, bottom=0.09, top=0.875,
                            wspace=0.25, hspace=0.28)
     save_figure(figure, output_dir, "02_six_axis_estimates")
 
