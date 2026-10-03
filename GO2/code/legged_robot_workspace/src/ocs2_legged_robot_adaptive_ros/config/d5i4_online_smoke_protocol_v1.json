@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "stage": "D5I4_E3_combined_four_mode_online_smoke",
+  "candidate": "E3_combined",
+  "profile_id": "d5i1_multisine_v1_T12_translation_h123_rotation_zyx_h81212",
+  "groups": [
+    "nominal_original",
+    "nominal_phase_corrected",
+    "payload_original",
+    "payload_phase_corrected"
+  ],
+  "pre_registered_order": [
+    "nominal_original",
+    "nominal_phase_corrected",
+    "payload_original",
+    "payload_phase_corrected"
+  ],
+  "schedule": {
+    "profile_start_time_s": 2.4,
+    "ramp_in_duration_s": 2.4,
+    "steady_duration_s": 24.0,
+    "ramp_out_duration_s": 2.4,
+    "settle_duration_s": 1.2,
+    "complete_time_s": 32.4,
+    "supercycle_period_s": 12.0,
+    "gait_cycle_duration_s": 1.2,
+    "knot_dt_s": 0.01
+  },
+  "frozen_baseline": {
+    "csv_sha256": "142550975dfda3cb21d4630c3a9f93d81221352b48086b6af227031c8c756166",
+    "provenance_sha256": "900774484da4db2b47d6f5d294593cb306a168172d3af81fc0e9b56dca64fac0",
+    "source_protocol_sha256": "3a1455f1e25374fe1b613115edf91e7016cfb512dfa4f7145dce2cbd1d1abe28",
+    "occupied_composite_keys": 376,
+    "payload_data_used_for_training": false,
+    "online_update_allowed": false
+  },
+  "locked_controller": {
+    "enable_parameter_update": true,
+    "enable_adaptive_dynamics": true,
+    "enable_clf_constraint": true,
+    "enable_input_bias_cost": false,
+    "enable_encoded_reference_derivatives": true,
+    "parameterization": "payload_inertial_10d",
+    "gamma": "I10",
+    "kd": "I6"
+  },
+  "allowed_independent_variables": [
+    "truePlantPayloadInertialEnabled",
+    "enableCompositePhaseBaselineCorrection"
+  ],
+  "engineering_gates": {
+    "minimum_corrected_steady_lookup_coverage": 0.95,
+    "maximum_snapshot_time_error_s": 1e-6,
+    "maximum_update_drive_closure_error": 1e-10,
+    "maximum_pi_dot_closure_error": 1e-10,
+    "maximum_eq10_closure_error": 1e-9,
+    "maximum_eq11_closure_error": 1e-9
+  },
+  "scientific_boundary": "One run per mode is mechanism and safety smoke only; it is not the repeated formal campaign and cannot establish robustness, payload retention, tracking benefit, or parameter convergence."
+}

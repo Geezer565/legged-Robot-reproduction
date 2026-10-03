@@ -1,0 +1,68 @@
+<?xml version="1.0" ?>
+
+<launch>
+  <arg name="rviz"               default="true" />
+  <arg name="description_name"   default="legged_robot_description"/>
+  <arg name="multiplot"          default="false"/>
+
+  <arg name="taskFile"          default="$(find ocs2_legged_robot)/config/mpc/task.info"/>
+  <arg name="referenceFile"     default="$(find ocs2_legged_robot)/config/command/reference.info"/>
+  <arg name="urdfFile"          default="$(find ocs2_robotic_assets)/resources/anymal_c/urdf/anymal.urdf"/>
+  <arg name="gaitCommandFile"   default="$(find ocs2_legged_robot)/config/command/gait.info"/>
+  <arg name="adaptiveSettingsFile" default="$(find ocs2_legged_robot_adaptive)/config/adaptive_settings.info"/>
+  <arg name="disturbance_enabled" default="false"/>
+  <arg name="disturbance_start_time" default="1.0"/>
+  <arg name="disturbance_end_time" default="4.0"/>
+  <arg name="disturbance_fx" default="0.0"/>
+  <arg name="disturbance_fy" default="0.0"/>
+  <arg name="disturbance_fz" default="0.0"/>
+  <arg name="disturbance_tx" default="0.0"/>
+  <arg name="disturbance_ty" default="0.0"/>
+  <arg name="disturbance_tz" default="0.0"/>
+  <!-- Task C plant-only independent variable. 1.0 preserves the exact Task A/B plant. -->
+  <arg name="true_plant_mass_scale" default="1.0"/>
+  <arg name="task_c_diagnostics_enabled" default="false"/>
+
+  <param name="$(arg description_name)" textfile="$(arg urdfFile)"/>
+
+  <group if="$(arg rviz)">
+    <param name="$(arg description_name)" textfile="$(arg urdfFile)"/>
+    <arg name="rvizconfig" default="$(find ocs2_legged_robot_ros)/rviz/legged_robot.rviz" />
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rvizconfig)" output="screen" />
+  </group>
+
+  <group if="$(arg multiplot)">
+    <include file="$(find ocs2_legged_robot_ros)/launch/multiplot.launch"/>
+  </group>
+
+  <param name="multiplot"         value="$(arg multiplot)"/>
+  <param name="taskFile"          value="$(arg taskFile)" />
+  <param name="referenceFile"     value="$(arg referenceFile)" />
+  <param name="urdfFile"          value="$(arg urdfFile)" />
+  <param name="gaitCommandFile"   value="$(arg gaitCommandFile)"/>
+  <param name="adaptiveSettingsFile" value="$(arg adaptiveSettingsFile)"/>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros" type="legged_robot_adaptive_ddp_mpc" name="legged_robot_adaptive_ddp_mpc"
+        output="screen" launch-prefix=""/>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros" type="legged_robot_adaptive_dummy" name="legged_robot_adaptive_dummy"
+        output="screen" launch-prefix="">
+    <param name="disturbance_enabled" value="$(arg disturbance_enabled)"/>
+    <param name="disturbance_start_time" value="$(arg disturbance_start_time)"/>
+    <param name="disturbance_end_time" value="$(arg disturbance_end_time)"/>
+    <param name="disturbance_fx" value="$(arg disturbance_fx)"/>
+    <param name="disturbance_fy" value="$(arg disturbance_fy)"/>
+    <param name="disturbance_fz" value="$(arg disturbance_fz)"/>
+    <param name="disturbance_tx" value="$(arg disturbance_tx)"/>
+    <param name="disturbance_ty" value="$(arg disturbance_ty)"/>
+    <param name="disturbance_tz" value="$(arg disturbance_tz)"/>
+    <param name="true_plant_mass_scale" value="$(arg true_plant_mass_scale)"/>
+    <param name="task_c_diagnostics_enabled" value="$(arg task_c_diagnostics_enabled)"/>
+  </node>
+
+  <node pkg="ocs2_legged_robot_ros" type="legged_robot_target" name="legged_robot_target"
+        output="screen" launch-prefix="gnome-terminal --"/>
+
+  <node pkg="ocs2_legged_robot_ros" type="legged_robot_gait_command" name="legged_robot_gait_command"
+        output="screen" launch-prefix="gnome-terminal --"/>
+</launch>

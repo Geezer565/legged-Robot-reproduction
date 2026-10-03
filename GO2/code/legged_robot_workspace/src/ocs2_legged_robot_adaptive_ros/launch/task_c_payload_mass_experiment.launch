@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+  <!--
+    Formal PayloadMass1D paired acquisition.  The controller always receives
+    the same nominal URDF and the same scalar-adaptation settings; only the
+    dummy plant's mass scale is an experimental variable.
+  -->
+  <arg name="true_plant_mass_scale" default="1.00"/>
+  <arg name="target_start_time" default="0.50"/>
+  <arg name="target_step" default="0.10"/>
+  <arg name="adaptiveSettingsFile"
+       default="$(find ocs2_legged_robot_adaptive)/config/adaptive_settings_payload_mass_1d.info"/>
+
+  <include file="$(find ocs2_legged_robot_adaptive_ros)/launch/task_c_mass_smoke.launch">
+    <arg name="true_plant_mass_scale" value="$(arg true_plant_mass_scale)"/>
+    <arg name="target_start_time" value="$(arg target_start_time)"/>
+    <arg name="target_step" value="$(arg target_step)"/>
+    <arg name="adaptiveSettingsFile" value="$(arg adaptiveSettingsFile)"/>
+  </include>
+</launch>

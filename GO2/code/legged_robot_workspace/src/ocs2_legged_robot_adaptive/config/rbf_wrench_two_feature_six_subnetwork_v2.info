@@ -1,0 +1,16 @@
+; V2 symmetric basis for sign-changing and periodic disturbances.
+; Centers are fixed at runtime and generated deterministically as a 5x5 grid.
+; No disturbance truth is read online or used as a network input.
+rbf_wrench_two_feature_six_subnetwork_basis {
+  subnetworkCount 6
+  inputDimensionPerSubnetwork 2
+  gaussianNodeCount 25
+  centerLayout symmetric_grid_5x5
+  linearExtent 2.0
+  angularExtent 4.0
+  gridWidthRatio 0.85
+  axisOrder { Fx Fy Fz Tx Ty Tz }
+  residualScale { (0,0) 18.40147689318011 (1,0) 18.757520233566048 (2,0) 17.534482646627026 (3,0) 2.3370077074651903 (4,0) 5.4660415889306133 (5,0) 1.7261893548458138 }
+  discrepancyScale { (0,0) 18.40147689318011 (1,0) 18.757520233566048 (2,0) 17.534482646627026 (3,0) 2.3370077074651903 (4,0) 5.4660415889306133 (5,0) 1.7261893548458138 }
+  outputScale { (0,0) 18.40147689318011 (1,0) 18.757520233566048 (2,0) 17.534482646627026 (3,0) 2.3370077074651903 (4,0) 5.4660415889306133 (5,0) 1.7261893548458138 }
+}

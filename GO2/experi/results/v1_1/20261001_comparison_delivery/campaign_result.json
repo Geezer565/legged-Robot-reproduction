@@ -1,0 +1,21 @@
+{
+  "collection_type": "same_condition_manual_repair_collection",
+  "requested": 16,
+  "validated": 16,
+  "unique_condition_method_pairs": 16,
+  "delivery_complete": true,
+  "plot_return_code": 0,
+  "expected_figure_pairs": 8,
+  "png_count": 8,
+  "svg_count": 8,
+  "original_campaign_attempts": 16,
+  "original_campaign_validated": 13,
+  "manual_repair_attempts": 5,
+  "manual_repair_validated": 3,
+  "retained_failed_attempts": 0,
+  "same_frozen_binary_for_all_cases": false,
+  "figure_directory": "/mnt/d/GO2/experi/results/v1_1/20261001_comparison_delivery/figures_final",
+  "provenance": "See campaign_case_index.json, README.md and handoff/cleanup_provenance.json.",
+  "historical_failed_attempts": 5,
+  "handoff_cleanup": "Failed raw records removed 2026-10-03; metadata in handoff/cleanup_provenance.json; 16 valid cases unchanged."
+}

@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Current V1.1 / ETH / Liu / Zhou entry. Historical controllers are not exposed. -->
+  <arg name="case_dir"/>
+  <arg name="controller_config"/>
+  <arg name="method" default="v11_equivalent_wrench"/>
+  <arg name="readiness_topic" default="$(eval {'v11_equivalent_wrench':'/myrbf_v11_diagnostics', 'eth':'/myrbf_shadow_diagnostics', 'liu_van_mpc_port':'/myrbf_shadow_diagnostics', 'zhou_ssi':'/myrbf_shadow_diagnostics'}[arg('method')])"/>
+  <arg name="gui" default="false"/>
+  <arg name="gazebo_seed" default="4102"/>
+  <arg name="world" default="$(find legged_gazebo)/worlds/myrbf_flat_control.world"/>
+  <arg name="spawn_x" default="0"/><arg name="spawn_y" default="0"/>
+  <arg name="spawn_z" default="0.35"/><arg name="spawn_pitch" default="0"/>
+  <arg name="flat_motion" default="true"/>
+  <arg name="total_duration" default="33.0"/>
+  <arg name="motion_delay" default="3.0"/>
+  <arg name="motion_duration" default="30.0"/>
+  <arg name="vx" default="0.45"/>
+  <arg name="wrench_profile" default="constant"/>
+  <arg name="wrench_axis" default="fy"/>
+  <arg name="wrench_value" default="5.0"/><arg name="wrench_amplitude" default="0.0"/>
+  <arg name="wrench_frequency" default="0.15"/><arg name="wrench_secondary_amplitude" default="0.0"/>
+  <arg name="wrench_secondary_frequency" default="0.30"/>
+  <arg name="wrench_phase_deg" default="90.0"/><arg name="wrench_secondary_phase_deg" default="90.0"/>
+  <arg name="wrench_rate" default="20.0"/><arg name="wrench_hold" default="0.25"/>
+
+  <param name="/controllers/legged_controller/enable_myrbf_shadow" value="true"/>
+  <param name="/legged_robot_target/hold_commanded_heading" value="$(arg flat_motion)"/>
+  <param name="/controllers/legged_controller/enable_myrbf_control_injection" value="true"/>
+  <rosparam command="load" file="$(arg controller_config)" ns="/controllers/legged_controller/myrbf_shadow"/>
+  <param name="legged_robot_description" command="$(find xacro)/xacro $(find legged_unitree_description)/urdf/robot.xacro robot_type:=go2"/>
+  <node name="generate_urdf" pkg="legged_common" type="generate_urdf.sh" output="screen" args="$(find legged_unitree_description)/urdf/robot.xacro go2"/>
+  <rosparam file="$(find legged_gazebo)/config/default.yaml" command="load"/>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(arg world)"/><arg name="paused" value="true"/>
+    <arg name="gui" value="$(arg gui)"/><arg name="extra_gazebo_args" value="--seed $(arg gazebo_seed)"/>
+  </include>
+  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" output="screen"
+        args="-x $(arg spawn_x) -y $(arg spawn_y) -z $(arg spawn_z) -P $(arg spawn_pitch) -param legged_robot_description -urdf -model go2 -J LF_HAA -0.10 -J LF_HFE 0.72 -J LF_KFE -1.44 -J LH_HAA -0.10 -J LH_HFE 0.72 -J LH_KFE -1.44 -J RF_HAA 0.10 -J RF_HFE 0.72 -J RF_KFE -1.44 -J RH_HAA 0.10 -J RH_HFE 0.72 -J RH_KFE -1.44"/>
+  <include file="$(find legged_controllers)/launch/load_controller.launch">
+    <arg name="robot_type" value="go2"/><arg name="cheater" value="false"/>
+    <arg name="enable_controller_loader" value="false"/>
+    <arg name="enable_gait_command" value="false"/><arg name="enable_target_command" value="$(arg flat_motion)"/>
+  </include>
+  <node name="myrbf_unpause_when_controller_ready" pkg="legged_controllers" type="unpause_when_controller_ready.py" output="screen">
+    <param name="require_v11_ready" value="$(eval arg('method') == 'v11_equivalent_wrench')"/>
+    <remap from="/myrbf_shadow_diagnostics" to="$(arg readiness_topic)"/>
+  </node>
+  <!-- The runner stops launch after recorders finish; no required recorder can truncate peers. -->
+  <node name="myrbf_state_recorder" pkg="legged_controllers" type="record_stage8c.py" output="screen" args="--output $(arg case_dir)/state.csv --duration $(arg total_duration) --rate 50"/>
+  <node if="$(eval arg('method') != 'v11_equivalent_wrench')" name="myrbf_shadow_recorder" pkg="legged_controllers" type="record_myrbf_shadow.py" output="screen" args="--output $(arg case_dir)/shadow.csv --duration $(arg total_duration)"/>
+  <node if="$(eval arg('method') == 'v11_equivalent_wrench')" name="v11_recorder" pkg="legged_controllers" type="record_adaptive_wrench.py" output="screen" args="--output $(arg case_dir)/v11_equivalent_wrench.csv --duration $(arg total_duration) --topic /myrbf_v11_diagnostics --columns-param /myrbf_v11_columns"/>
+  <node name="myrbf_wrench_injector" pkg="legged_controllers" type="apply_myrbf_wrench.py" output="screen"
+        args="--output $(arg case_dir)/wrench.csv --body go2::base --profile $(arg wrench_profile) --axis $(arg wrench_axis) --value $(arg wrench_value) --amplitude $(arg wrench_amplitude) --frequency $(arg wrench_frequency) --secondary-amplitude $(arg wrench_secondary_amplitude) --secondary-frequency $(arg wrench_secondary_frequency) --phase-deg $(arg wrench_phase_deg) --secondary-phase-deg $(arg wrench_secondary_phase_deg) --delay 0.0 --duration $(arg total_duration) --rate $(arg wrench_rate) --hold-duration $(arg wrench_hold)"/>
+  <node if="$(arg flat_motion)" name="constant_velocity_command" pkg="legged_controllers" type="publish_myrbf_motion.py" output="screen"
+        args="--output $(arg case_dir)/motion.csv --gait trot --ramp-duration 2 --vx $(arg vx) --vy 0 --yaw-rate 0 --delay $(arg motion_delay) --duration $(arg motion_duration) --rate 20"/>
+  <node name="tp01_target_recorder" pkg="legged_controllers" type="record_tp01_target.py" output="screen"
+        args="--planner-output $(arg case_dir)/planner_received.csv --mpc-output $(arg case_dir)/mpc_target.csv --duration $(arg total_duration)"/>
+</launch>

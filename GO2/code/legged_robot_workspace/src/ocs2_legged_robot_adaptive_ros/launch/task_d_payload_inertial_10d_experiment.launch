@@ -1,0 +1,119 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- D3 paired-run entry. Group selection is done by the audited runner. -->
+  <arg name="taskFile" default="$(find ocs2_legged_robot)/config/mpc/task.info"/>
+  <arg name="referenceFile" default="$(find ocs2_legged_robot)/config/command/reference.info"/>
+  <arg name="urdfFile" default="$(find ocs2_robotic_assets)/resources/anymal_c/urdf/anymal.urdf"/>
+  <arg name="gaitCommandFile" default="$(find ocs2_legged_robot)/config/command/gait.info"/>
+  <arg name="adaptiveSettingsFile"/>
+  <arg name="payload_enabled"/>
+  <arg name="target_step" default="0.10"/>
+  <arg name="target_start_time" default="1.20"/>
+  <arg name="experiment_condition" default="walk_target"/>
+  <!-- D5I2 richer reference is a separate, default-OFF scheduler path. -->
+  <arg name="richer_reference_enabled" default="false"/>
+  <arg name="identification_candidate" default="E3_combined"/>
+  <arg name="identification_knot_dt" default="0.01"/>
+  <arg name="identification_profile_start_time" default="2.4"/>
+  <arg name="identification_ramp_in_duration" default="2.4"/>
+  <arg name="identification_steady_duration" default="12.0"/>
+  <arg name="identification_ramp_out_duration" default="2.4"/>
+  <arg name="identification_settle_duration" default="1.2"/>
+  <arg name="payload_mass" default="5.213485"/>
+  <arg name="payload_com_x" default="0.16"/>
+  <arg name="payload_com_y" default="-0.03"/>
+  <arg name="payload_com_z" default="0.09"/>
+  <arg name="payload_inertia_xx" default="0.08"/>
+  <arg name="payload_inertia_xy" default="0.0"/>
+  <arg name="payload_inertia_xz" default="0.0"/>
+  <arg name="payload_inertia_yy" default="0.10"/>
+  <arg name="payload_inertia_yz" default="0.0"/>
+  <arg name="payload_inertia_zz" default="0.12"/>
+  <!-- Quick A/B/C/D pilot: true-plant-only world wrench, default OFF keeps D3/D4 unchanged. -->
+  <arg name="disturbance_enabled" default="false"/>
+  <arg name="disturbance_start_time" default="4.0"/>
+  <arg name="disturbance_end_time" default="16.0"/>
+  <arg name="disturbance_fx" default="0.0"/>
+  <!-- D5H0 is a read-only sidecar.  The default remains disabled so all
+       historical D3/D4/D5B campaigns retain their exact launch graph. -->
+  <arg name="d5h0_shadow_enabled" default="false"/>
+  <arg name="d5h0_baseline_file"
+       default="$(find ocs2_legged_robot_adaptive_ros)/config/d5h0_nominal_gait_phase_baseline_v1.csv"/>
+  <arg name="d5h0_phase_bins" default="24"/>
+  <arg name="d5h0_cycle_duration" default="1.2"/>
+  <arg name="d5h0_minimum_cycle_start_time" default="2.2"/>
+
+  <param name="legged_robot_description" textfile="$(arg urdfFile)"/>
+  <param name="taskFile" value="$(arg taskFile)"/>
+  <param name="referenceFile" value="$(arg referenceFile)"/>
+  <param name="urdfFile" value="$(arg urdfFile)"/>
+  <param name="gaitCommandFile" value="$(arg gaitCommandFile)"/>
+  <param name="adaptiveSettingsFile" value="$(arg adaptiveSettingsFile)"/>
+  <param name="multiplot" value="false"/>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="legged_robot_adaptive_ddp_mpc"
+        name="legged_robot_adaptive_ddp_mpc" output="screen"/>
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="legged_robot_adaptive_dummy"
+        name="legged_robot_adaptive_dummy" output="screen">
+    <param name="true_plant_mass_scale" value="1.0"/>
+    <param name="task_c_diagnostics_enabled" value="false"/>
+    <param name="disturbance_enabled" value="$(arg disturbance_enabled)"/>
+    <param name="disturbance_start_time" value="$(arg disturbance_start_time)"/>
+    <param name="disturbance_end_time" value="$(arg disturbance_end_time)"/>
+    <param name="disturbance_fx" value="$(arg disturbance_fx)"/>
+    <param name="true_plant_payload_inertial_enabled" value="$(arg payload_enabled)"/>
+    <param name="true_plant_payload_mass" value="$(arg payload_mass)"/>
+    <param name="true_plant_payload_com_x" value="$(arg payload_com_x)"/>
+    <param name="true_plant_payload_com_y" value="$(arg payload_com_y)"/>
+    <param name="true_plant_payload_com_z" value="$(arg payload_com_z)"/>
+    <param name="true_plant_payload_inertia_xx" value="$(arg payload_inertia_xx)"/>
+    <param name="true_plant_payload_inertia_xy" value="$(arg payload_inertia_xy)"/>
+    <param name="true_plant_payload_inertia_xz" value="$(arg payload_inertia_xz)"/>
+    <param name="true_plant_payload_inertia_yy" value="$(arg payload_inertia_yy)"/>
+    <param name="true_plant_payload_inertia_yz" value="$(arg payload_inertia_yz)"/>
+    <param name="true_plant_payload_inertia_zz" value="$(arg payload_inertia_zz)"/>
+  </node>
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="aclf_observation_monitor.py"
+        name="task_d_payload_inertial_monitor" output="screen"/>
+  <node unless="$(arg richer_reference_enabled)"
+        pkg="ocs2_legged_robot_adaptive_ros"
+        type="deterministic_locomotion_scheduler"
+        name="task_d_payload_inertial_scheduler" output="screen">
+    <param name="target_step" value="$(arg target_step)"/>
+    <param name="target_start_time" value="$(arg target_start_time)"/>
+    <param name="experiment_condition" value="$(arg experiment_condition)"/>
+  </node>
+  <node if="$(arg richer_reference_enabled)"
+        pkg="ocs2_legged_robot_adaptive_ros"
+        type="identification_reference_scheduler"
+        name="task_d_d5i2_reference_scheduler" output="screen">
+    <param name="candidate" value="$(arg identification_candidate)"/>
+    <param name="knot_dt" value="$(arg identification_knot_dt)"/>
+    <param name="profile_start_time"
+           value="$(arg identification_profile_start_time)"/>
+    <param name="ramp_in_duration"
+           value="$(arg identification_ramp_in_duration)"/>
+    <param name="steady_duration"
+           value="$(arg identification_steady_duration)"/>
+    <param name="ramp_out_duration"
+           value="$(arg identification_ramp_out_duration)"/>
+    <param name="settle_duration"
+           value="$(arg identification_settle_duration)"/>
+  </node>
+  <node if="$(arg d5h0_shadow_enabled)"
+        pkg="ocs2_legged_robot_adaptive_ros"
+        type="d5h0_shadow_diagnostics.py"
+        name="task_d_d5h0_shadow_diagnostics" output="screen">
+    <param name="baseline_file" value="$(arg d5h0_baseline_file)"/>
+    <param name="phase_bins" value="$(arg d5h0_phase_bins)"/>
+    <param name="cycle_duration" value="$(arg d5h0_cycle_duration)"/>
+    <param name="minimum_cycle_start_time"
+           value="$(arg d5h0_minimum_cycle_start_time)"/>
+    <!-- D3/D4 PayloadInertial10D baseline has Gamma=I10.  This explicit
+         diagnostic copy is audited against the effective config per run. -->
+    <rosparam param="gamma_diagonal">[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]</rosparam>
+  </node>
+</launch>

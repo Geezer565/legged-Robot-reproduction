@@ -1,3 +1,31 @@
+# Go2 V1.1 — 当前开发与实验交接
+
+更新：2026-10-03。**当前版本在 [`GO2/`](GO2/) 中。** 根目录其他控制器、结果和旧分支是历史资料，不与当前工程混合编译。
+
+## 当前入口
+
+- [仓库范围、部署位置与完整数据](GO2/PUBLIC_REPOSITORY.md)
+- [开发与实验说明 / README_AGENT](GO2/README_AGENT.md)
+- [交接 Word：公式、实验接口、结果及后续计划](GO2/handoff/Go2_V1.1_交接说明.docx)
+- [当前源码与安装入口](GO2/code/legged_robot_workspace/)
+- [运行命令](GO2/experi/run.md)
+- [上一轮结果：8 张最终图](GO2/experi/results/v1_1/20261001_comparison_delivery/README.md)
+- [公式与六维等效不确定量](GO2/V1.1公式与六维等效不确定量.md)
+- [完整交接包下载（含原始记录）](https://github.com/Geezer565/legged-Robot-reproduction/releases/tag/v1.1-handoff-20261003)
+
+V1.1、ETH、Liu-VAN、Zhou-RFF 四种方法，比较无人工外力、恒力、正弦、双正弦四种条件，共 16 项。平地恒速前进，准备后平滑加速至机身前向 0.45 m/s，每项记录 33 s；无终点、无规划路径。每项只运行一次，不自动重试。
+
+绘图为六维速度跟踪和六维等效不确定力/力矩。等效不确定量不是人工外力的直接测量，不能将两者的差值直接当成全部估计误差。
+
+推荐将 `GO2/` 放到 `D:/GO2`，按 README_AGENT 安装 Ubuntu 20.04 / ROS Noetic / Gazebo 11 并编译；不要覆盖已有工作环境。仓库不是已安装的系统镜像。仓库仅含最终图片和汇总，**重画上一轮结果须从完整发布附件恢复原始记录**。
+
+上一轮 16 份有效记录包含 3 项排障补录，不是同一冻结版本一次全部成功。V1.1 使用软下降处理，与原文严格约束有区别。全部为仿真，不代表实机验证、稳定性证明或全面优于其他方法。本次发布未重新运行实验。
+
+第三方代码和模型保留各自许可证。更新前首页也保存在 [历史说明](docs/README_BEFORE_V11_20261003.md)。
+
+<details>
+<summary>旧版说明（仅历史参考，不作为当前入口）</summary>
+
 # legged_control
 
 > 当前公开开发分支：`codex/myrbf-v5a-repeat-gate`。这里保存的是 Go2 + OCS2 的 MyRBF 接入、Gazebo 实验和验证记录；现有正式数据不是实机数据。真实 Go2 仍需先完成独立的硬件安全检查。
@@ -308,3 +336,5 @@ Predictive Control,” (submitted to) IEEE Trans. Robot., no. August, 2022, doi:
 [4] C. Dario Bellicoso, C. Gehring, J. Hwangbo, P. Fankhauser, and M. Hutter, “Perception-less terrain adaptation
 through whole body control and hierarchical optimization,” in IEEE-RAS International Conference on Humanoid Robots,
 2016, pp. 558–564, doi: 10.1109/HUMANOIDS.2016.7803330.
+
+</details>

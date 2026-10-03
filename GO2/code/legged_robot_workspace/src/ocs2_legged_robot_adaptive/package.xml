@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>ocs2_legged_robot_adaptive</name>
+  <version>0.0.1</version>
+  <description>Adaptive CLF-MPC extension for OCS2 legged robot example</description>
+
+  <maintainer email="liuyi@example.com">liuyi</maintainer>
+  <license>BSD-3</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>ocs2_core</depend>
+  <depend>ocs2_oc</depend>
+  <depend>ocs2_ddp</depend>
+  <depend>ocs2_mpc</depend>
+  <depend>ocs2_sqp</depend>
+  <depend>ocs2_ipm</depend>
+  <depend>ocs2_robotic_assets</depend>
+  <depend>ocs2_robotic_tools</depend>
+  <depend>ocs2_pinocchio_interface</depend>
+  <depend>ocs2_centroidal_model</depend>
+  <depend>ocs2_legged_robot</depend>
+  <depend>pinocchio</depend>
+</package>

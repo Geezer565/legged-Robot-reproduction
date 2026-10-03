@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Fixed Task B baseline schedule. The target is published before its knot and
+       becomes active at an exact MPC/simulation time, independent of wall clock. -->
+  <arg name="target_start_time" default="0.50"/>
+  <arg name="target_step" default="0.10"/>
+  <arg name="disturbance_start_time" default="1.0"/>
+  <arg name="disturbance_end_time" default="4.0"/>
+
+  <include file="$(find ocs2_legged_robot_adaptive_ros)/launch/adaptive_update_validation.launch">
+    <arg name="disturbance_start_time" value="$(arg disturbance_start_time)"/>
+    <arg name="disturbance_end_time" value="$(arg disturbance_end_time)"/>
+    <arg name="disturbance_fx" value="20.0"/>
+    <arg name="disturbance_fy" value="0.0"/>
+    <arg name="disturbance_fz" value="0.0"/>
+    <arg name="disturbance_tx" value="0.0"/>
+    <arg name="disturbance_ty" value="0.0"/>
+    <arg name="disturbance_tz" value="0.0"/>
+  </include>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="aclf_observation_monitor.py"
+        name="task_b_observation_monitor"
+        output="screen"/>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="aclf_small_step_target.py"
+        name="task_b_target_scheduler"
+        args="--step $(arg target_step) --start-at-mpc-time $(arg target_start_time)"
+        output="screen"/>
+</launch>

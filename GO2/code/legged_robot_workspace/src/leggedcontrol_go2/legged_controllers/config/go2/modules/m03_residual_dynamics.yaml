@@ -1,0 +1,16 @@
+module:
+  name: residual_dynamics
+  mode: shadow
+  model_type: armav_affine_nlms
+  input_wrench_order: [Fx, Fy, Fz, Tx, Ty, Tz]
+  update_rate_hz: 200.0
+  learning_rate: [0.10, 0.10, 0.10, 0.08, 0.08, 0.08]
+  parameter_limit: [5.0, 5.0, 5.0, 3.0, 3.0, 3.0]
+  residual_scale: [20.0, 20.0, 40.0, 8.0, 8.0, 8.0]
+  tracking_scale: [0.10, 0.10, 0.10, 0.20, 0.20, 0.20]
+  normalization_epsilon: 1.0e-9
+  minimum_samples_for_confidence: 20
+  confidence_rise_samples: 80
+  prediction_steps: 1
+  inject_into_control: false
+

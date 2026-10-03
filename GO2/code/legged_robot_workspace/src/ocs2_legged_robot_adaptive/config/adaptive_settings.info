@@ -1,0 +1,72 @@
+; interface 只读取 adaptive_clf_mpc；后面的旧试验段保留但不参与当前控制与 Task B。
+adaptive_clf_mpc
+{
+  ; Task B 默认恢复 full_adaptive；三模式入口只允许切换下面前两个布尔量。
+  enableParameterUpdate  true
+  enableAdaptiveDynamics true
+  enableClfConstraint     true
+  enableInputBiasCost     false
+  useSoftConstraint       true
+  softConstraintMu        0.1
+  softConstraintDelta     5.0
+  timestampTolerance      1e-9
+  parameterization        constant_wrench_6d
+
+  ; 所有量均在 world 系。K_D 是完整矩阵，不能以 clfRate 替代。
+  lambdaLinear { (0,0) 2.0 (1,1) 2.0 (2,2) 2.0 }
+  lambdaAngular { (0,0) 1.5 (1,1) 1.5 (2,2) 1.5 }
+  gamma { (0,0) 3.0 (1,1) 3.0 (2,2) 3.0 (3,3) 1.5 (4,4) 1.5 (5,5) 1.5 }
+  ; 正式 baseline K_D=I6：显式写全 6x6，避免未写 off-diagonal 时 loader 采用默认值。
+  kd {
+    (0,0) 1.0 (0,1) 0.0 (0,2) 0.0 (0,3) 0.0 (0,4) 0.0 (0,5) 0.0
+    (1,0) 0.0 (1,1) 1.0 (1,2) 0.0 (1,3) 0.0 (1,4) 0.0 (1,5) 0.0
+    (2,0) 0.0 (2,1) 0.0 (2,2) 1.0 (2,3) 0.0 (2,4) 0.0 (2,5) 0.0
+    (3,0) 0.0 (3,1) 0.0 (3,2) 0.0 (3,3) 1.0 (3,4) 0.0 (3,5) 0.0
+    (4,0) 0.0 (4,1) 0.0 (4,2) 0.0 (4,3) 0.0 (4,4) 1.0 (4,5) 0.0
+    (5,0) 0.0 (5,1) 0.0 (5,2) 0.0 (5,3) 0.0 (5,4) 0.0 (5,5) 1.0
+  }
+  initialParameterEstimate
+{
+  (0,0) 0.0
+  (1,0) 0.0
+  (2,0) 0.0
+  (3,0) 0.0
+  (4,0) 0.0
+  (5,0) 0.0
+}
+}
+
+adaptive_estimator
+{
+  ; Sliding variable definition:
+  ; sigma_p = e_v + lambdaPosition * e_p
+  ; sigma_o = e_w + lambdaOrientation * e_o
+  lambdaPosition       2.0
+  lambdaOrientation    1.5
+
+  ; Online adaptation gains
+  forceAdaptationGain  3.0
+  torqueAdaptationGain 1.5
+
+  ; Saturation for estimated external wrench
+  maxForceEstimate     150.0
+  maxTorqueEstimate    80.0
+}
+
+adaptive_clf
+{
+  ; CLF-like inequality:
+  ; epsilon - sigma^T * d_hat - clfRate * ||sigma||^2 >= 0
+  lambdaPosition       2.0
+  lambdaOrientation    1.5
+  clfRate              0.6
+  epsilon              0.05
+
+  ; Soft-constraint penalty
+  useSoftConstraint    true
+  softConstraintMu     0.1
+  softConstraintDelta  5.0
+
+  ; Additional quadratic cost on force-bias tracking
+  inputBiasWeight      2e-3
+}

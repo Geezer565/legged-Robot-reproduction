@@ -1,0 +1,12 @@
+module:
+  name: periodic_residual
+  mode: shadow
+  update_rate_hz: 1000.0
+  harmonics: 2
+  frequency_hz: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+  forgetting_factor: 0.995
+  initial_covariance: 100.0
+  minimum_observed_periods: 1.5
+  learn_residual_after_myrbf: true
+  max_abs_wrench: [60.0, 60.0, 80.0, 15.0, 15.0, 15.0]
+

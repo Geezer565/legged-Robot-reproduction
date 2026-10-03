@@ -1,0 +1,17 @@
+module:
+  name: adaptive_feature
+  mode: shadow
+  strategy: width_only
+  input_wrench_order: [Fx, Fy, Fz, Tx, Ty, Tz]
+  slow_update_rate_hz: 10.0
+  initial_extent: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  minimum_extent: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+  maximum_extent: [8.0, 8.0, 8.0, 8.0, 8.0, 8.0]
+  initial_width_ratio: 0.85
+  extent_sigma_multiplier: 2.5
+  maximum_relative_change: 0.05
+  minimum_samples: 100
+  publish_every_samples: 50
+  publish_at_solver_boundary: true
+  mutate_active_network: false
+

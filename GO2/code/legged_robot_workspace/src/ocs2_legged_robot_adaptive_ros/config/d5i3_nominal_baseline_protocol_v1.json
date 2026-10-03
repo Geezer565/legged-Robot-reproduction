@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "stage": "D5I3_nominal_only_baseline_calibration",
+  "trajectory_candidate": "E3_combined",
+  "profile_id": "d5i1_multisine_v1_T12_translation_h123_rotation_zyx_h81212",
+  "controller_and_plant": {
+    "plant": "nominal_ocs2_rollout_v1",
+    "payload_inertial_override": false,
+    "disturbance": false,
+    "enable_parameter_update": false,
+    "enable_adaptive_dynamics": false,
+    "enable_clf_constraint": true,
+    "enable_encoded_reference_derivatives": true
+  },
+  "schedule": {
+    "profile_start_time_s": 2.4,
+    "ramp_in_duration_s": 2.4,
+    "steady_duration_s": 24.0,
+    "ramp_out_duration_s": 2.4,
+    "settle_duration_s": 1.2,
+    "complete_time_s": 32.4,
+    "steady_supercycles": 2,
+    "supercycle_period_s": 12.0,
+    "gait_cycle_duration_s": 1.2,
+    "knot_dt_s": 0.01,
+    "c2_envelope": "10u3-15u4+6u5"
+  },
+  "data_split": {
+    "calibration_runs": 3,
+    "heldout_runs": 3,
+    "pre_registered_order": [
+      "calibration/run_01",
+      "heldout/run_01",
+      "calibration/run_02",
+      "heldout/run_02",
+      "calibration/run_03",
+      "heldout/run_03"
+    ],
+    "heldout_policy": "heldout runs are never used to create or update the template"
+  },
+  "baseline": {
+    "quantity": "raw_parameter_drive=Y_transpose_times_sigma_before_Gamma",
+    "training_formula": "duration-weighted nominal mean per occupied composite key",
+    "application_formula": "corrected_drive=raw_drive-frozen_nominal_baseline",
+    "active_stage": "steady_only",
+    "profile_phase_bins": 120,
+    "gait_phase_bins": 24,
+    "executed_mode_sequence": [13, 7, 14, 11],
+    "composite_key": [
+      "profile_phase_bin",
+      "causal_executed_gait_phase_bin",
+      "executed_mode"
+    ],
+    "causality": "lookup uses only current MPC time, current executed mode, and mode transitions already observed",
+    "unsupported_key_behavior": "fail_closed_zero_baseline",
+    "ramp_and_startup_behavior": "zero_baseline"
+  },
+  "frozen_engineering_gates": {
+    "all_six_runs_valid": true,
+    "minimum_complete_supercycles_per_run": 2,
+    "minimum_heldout_lookup_duration_coverage": 0.99,
+    "minimum_mean_heldout_terminal_drift_suppression_fraction": 0.5,
+    "corrected_terminal_drift_lower_in_every_heldout_run": true,
+    "d5i4_tracking_noninferiority_relative_margin": 0.05,
+    "d5i4_tracking_noninferiority_absolute_margin_m": 0.0005
+  },
+  "physical_coordinate_scales": [
+    5.213485,
+    0.9697642673581994,
+    0.9697642673581994,
+    0.9697642673581994,
+    0.12,
+    0.12,
+    0.12,
+    0.12,
+    0.12,
+    0.12
+  ],
+  "explicitly_excluded": [
+    "payload_data",
+    "estimator_on",
+    "adaptive_dynamics_on",
+    "Gamma_tuning",
+    "startup_gate",
+    "confidence_gate",
+    "performance_or_parameter_convergence_claim"
+  ],
+  "next_stage": "D5I4 four-mode online smoke only after every D5I3 gate passes"
+}

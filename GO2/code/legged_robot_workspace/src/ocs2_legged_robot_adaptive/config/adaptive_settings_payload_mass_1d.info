@@ -1,0 +1,44 @@
+; PayloadMass1D development configuration.
+; It is selected explicitly through /adaptiveSettingsFile and never replaces
+; the frozen ConstantWrench6D Task A/B/C baseline configuration.
+adaptive_clf_mpc
+{
+  enableParameterUpdate  true
+  enableAdaptiveDynamics true
+  enableClfConstraint     true
+  enableInputBiasCost     false
+  useSoftConstraint       true
+  softConstraintMu        0.1
+  softConstraintDelta     5.0
+  timestampTolerance      1e-9
+  parameterization        payload_mass_1d
+
+  ; Paper Sec. V-A uses Gamma_m=5.0 for the scalar unknown payload mass.
+  payloadMassAdaptationGain 5.0
+  ; Fail fast before a nonphysical estimated total mass reaches prediction.
+  minimumEstimatedTotalMass 1.0
+
+  lambdaLinear { (0,0) 2.0 (1,1) 2.0 (2,2) 2.0 }
+  lambdaAngular { (0,0) 1.5 (1,1) 1.5 (2,2) 1.5 }
+  ; Retained for common settings/schema compatibility. PayloadMass1D uses
+  ; payloadMassAdaptationGain and does not use this 6D Gamma in Eq.(8).
+  gamma { (0,0) 3.0 (1,1) 3.0 (2,2) 3.0 (3,3) 1.5 (4,4) 1.5 (5,5) 1.5 }
+  kd {
+    (0,0) 1.0 (0,1) 0.0 (0,2) 0.0 (0,3) 0.0 (0,4) 0.0 (0,5) 0.0
+    (1,0) 0.0 (1,1) 1.0 (1,2) 0.0 (1,3) 0.0 (1,4) 0.0 (1,5) 0.0
+    (2,0) 0.0 (2,1) 0.0 (2,2) 1.0 (2,3) 0.0 (2,4) 0.0 (2,5) 0.0
+    (3,0) 0.0 (3,1) 0.0 (3,2) 0.0 (3,3) 1.0 (3,4) 0.0 (3,5) 0.0
+    (4,0) 0.0 (4,1) 0.0 (4,2) 0.0 (4,3) 0.0 (4,4) 1.0 (4,5) 0.0
+    (5,0) 0.0 (5,1) 0.0 (5,2) 0.0 (5,3) 0.0 (5,4) 0.0 (5,5) 1.0
+  }
+  ; PayloadMass1D stores delta_m_hat [kg] in element zero only.
+  initialParameterEstimate
+  {
+    (0,0) 0.0
+    (1,0) 0.0
+    (2,0) 0.0
+    (3,0) 0.0
+    (4,0) 0.0
+    (5,0) 0.0
+  }
+}

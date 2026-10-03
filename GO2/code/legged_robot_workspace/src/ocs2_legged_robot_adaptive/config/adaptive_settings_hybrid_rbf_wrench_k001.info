@@ -1,0 +1,52 @@
+; MyRBF-Hybrid screening candidate: prediction update plus a small
+; Liu-inspired tracking contribution (uniform trackingGain = 0.01).
+; Per-axis prediction gains compensate for the six output scales.  Ty uses a
+; conservative gain because the pitch-moment observer is gait-noise limited.
+adaptive_clf_mpc
+{
+  enableParameterUpdate  true
+  enableAdaptiveDynamics true
+  enableClfConstraint     true
+  enableInputBiasCost     false
+  useSoftConstraint       true
+  softConstraintMu        0.1
+  softConstraintDelta     5.0
+  timestampTolerance      1e-9
+  parameterization        constant_wrench_6d
+  lambdaLinear { (0,0) 2.0 (1,1) 2.0 (2,2) 2.0 }
+  lambdaAngular { (0,0) 1.5 (1,1) 1.5 (2,2) 1.5 }
+  gamma { (0,0) 3.0 (1,1) 3.0 (2,2) 3.0 (3,3) 1.5 (4,4) 1.5 (5,5) 1.5 }
+  kd {
+    (0,0) 1.0 (0,1) 0.0 (0,2) 0.0 (0,3) 0.0 (0,4) 0.0 (0,5) 0.0
+    (1,0) 0.0 (1,1) 1.0 (1,2) 0.0 (1,3) 0.0 (1,4) 0.0 (1,5) 0.0
+    (2,0) 0.0 (2,1) 0.0 (2,2) 1.0 (2,3) 0.0 (2,4) 0.0 (2,5) 0.0
+    (3,0) 0.0 (3,1) 0.0 (3,2) 0.0 (3,3) 1.0 (3,4) 0.0 (3,5) 0.0
+    (4,0) 0.0 (4,1) 0.0 (4,2) 0.0 (4,3) 0.0 (4,4) 1.0 (4,5) 0.0
+    (5,0) 0.0 (5,1) 0.0 (5,2) 0.0 (5,3) 0.0 (5,4) 0.0 (5,5) 1.0
+  }
+  initialParameterEstimate {
+    (0,0) 0.0 (1,0) 0.0 (2,0) 0.0 (3,0) 0.0 (4,0) 0.0 (5,0) 0.0
+  }
+}
+
+rbf_wrench_closed_loop
+{
+  enabled                  true
+  method                   composite_rbf
+  basisFile                rbf_wrench_two_feature_six_subnetwork_v2.info
+  enableResidualFilter     true
+  residualFilterAlpha      0.5
+  observationTimeTolerance 1e-6
+  trackingGain {
+    (0,0) 0.01 (1,0) 0.01 (2,0) 0.01
+    (3,0) 0.01 (4,0) 0.01 (5,0) 0.01
+  }
+  predictionGain {
+    (0,0) 0.00100409 (1,0) 0.00096634 (2,0) 0.00110584
+    (3,0) 0.0622523 (4,0) 0.0040000 (5,0) 0.114105
+  }
+  leakage {
+    (0,0) 0.02 (1,0) 0.02 (2,0) 0.02
+    (3,0) 0.02 (4,0) 0.02 (5,0) 0.02
+  }
+}

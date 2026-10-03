@@ -1,0 +1,48 @@
+; SSI-MPC-inspired RFF online-gradient experiment. Baseline and RBF files are unchanged.
+adaptive_clf_mpc
+{
+  enableParameterUpdate  true
+  enableAdaptiveDynamics true
+  enableClfConstraint     true
+  enableInputBiasCost     false
+  useSoftConstraint       true
+  softConstraintMu        0.1
+  softConstraintDelta     5.0
+  timestampTolerance      1e-9
+  parameterization        constant_wrench_6d
+  lambdaLinear { (0,0) 2.0 (1,1) 2.0 (2,2) 2.0 }
+  lambdaAngular { (0,0) 1.5 (1,1) 1.5 (2,2) 1.5 }
+  gamma { (0,0) 3.0 (1,1) 3.0 (2,2) 3.0 (3,3) 1.5 (4,4) 1.5 (5,5) 1.5 }
+  kd {
+    (0,0) 1.0 (0,1) 0.0 (0,2) 0.0 (0,3) 0.0 (0,4) 0.0 (0,5) 0.0
+    (1,0) 0.0 (1,1) 1.0 (1,2) 0.0 (1,3) 0.0 (1,4) 0.0 (1,5) 0.0
+    (2,0) 0.0 (2,1) 0.0 (2,2) 1.0 (2,3) 0.0 (2,4) 0.0 (2,5) 0.0
+    (3,0) 0.0 (3,1) 0.0 (3,2) 0.0 (3,3) 1.0 (3,4) 0.0 (3,5) 0.0
+    (4,0) 0.0 (4,1) 0.0 (4,2) 0.0 (4,3) 0.0 (4,4) 1.0 (4,5) 0.0
+    (5,0) 0.0 (5,1) 0.0 (5,2) 0.0 (5,3) 0.0 (5,4) 0.0 (5,5) 1.0
+  }
+  initialParameterEstimate {
+    (0,0) 0.0 (1,0) 0.0 (2,0) 0.0 (3,0) 0.0 (4,0) 0.0 (5,0) 0.0
+  }
+}
+
+rbf_wrench_closed_loop
+{
+  enabled                  true
+  method                   rff_ogd
+  ; Reuse only the validated feature/output scales; Gaussian centers are not used.
+  basisFile                rbf_wrench_two_feature_six_subnetwork_v1.info
+  enableResidualFilter     true
+  residualFilterAlpha      0.5
+  observationTimeTolerance 1e-6
+  featureCount             50
+  randomSeed               20260824
+  frequencyStd             1.0
+  projectionRadius         0.0
+  ; Keep the paper's eta=0.003. A doubled-rate trial improved the disturbance
+  ; interval but caused substantially worse recovery, so it was rejected.
+  learningRate {
+    (0,0) 0.003 (1,0) 0.003 (2,0) 0.003
+    (3,0) 0.003 (4,0) 0.003 (5,0) 0.003
+  }
+}

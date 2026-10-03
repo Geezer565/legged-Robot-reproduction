@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<launch>
+  <!--
+    Stand-alone smoke for the equations published by Minniti et al. (RA-L 2022).
+    This launch intentionally disables the historical Task A--D/RBF diagnostics.
+    It validates the controller graph only; it does not claim to reproduce an
+    unpublished author trajectory, cost matrix, or wrench adaptation gain.
+  -->
+  <arg name="taskFile" default="$(find ocs2_legged_robot)/config/mpc/task.info"/>
+  <arg name="referenceFile" default="$(find ocs2_legged_robot)/config/command/reference.info"/>
+  <arg name="urdfFile" default="$(find ocs2_robotic_assets)/resources/anymal_c/urdf/anymal.urdf"/>
+  <arg name="gaitCommandFile" default="$(find ocs2_legged_robot)/config/command/gait.info"/>
+  <arg name="adaptiveSettingsFile" default="$(find ocs2_legged_robot_adaptive)/config/adaptive_settings_eth_paper_full_16d.info"/>
+
+  <param name="legged_robot_description" textfile="$(arg urdfFile)"/>
+  <param name="taskFile" value="$(arg taskFile)"/>
+  <param name="referenceFile" value="$(arg referenceFile)"/>
+  <param name="urdfFile" value="$(arg urdfFile)"/>
+  <param name="gaitCommandFile" value="$(arg gaitCommandFile)"/>
+  <param name="adaptiveSettingsFile" value="$(arg adaptiveSettingsFile)"/>
+  <param name="multiplot" value="false"/>
+  <param name="enableExperimentDiagnostics" value="false"/>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="legged_robot_adaptive_ddp_mpc"
+        name="legged_robot_adaptive_ddp_mpc"
+        output="screen"/>
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="legged_robot_adaptive_dummy"
+        name="legged_robot_adaptive_dummy"
+        output="screen">
+    <param name="disturbance_enabled" value="false"/>
+    <param name="true_plant_mass_scale" value="1.0"/>
+    <param name="task_c_diagnostics_enabled" value="false"/>
+    <param name="true_plant_payload_inertial_enabled" value="false"/>
+  </node>
+</launch>

@@ -1,0 +1,1565 @@
+{
+  "cases": [
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_v11_equivalent_wrench_go2.yaml",
+      "controller_config_source_sha256": "ff1047d5e98244b0554211f7a4e0027903ba9707a0eab96d050279bd25558949",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 0.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "constant",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 5.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "body_equivalent_uncertainty_about_com_left_hand",
+      "gait": "trot",
+      "gui": false,
+      "method": "v11_equivalent_wrench",
+      "method_definition": {
+        "clf_mode": "soft_squared_hinge",
+        "clf_penalty_weight": 1e-05,
+        "fidelity": "word_v1_1_fixed_gain_with_user_approved_soft_clf",
+        "public_name": "MyRBF V1.1",
+        "representation": "six_independent_scalar_gaussian_rbf_25_plus_bias",
+        "update": "negative_gamma_h_G_transpose_composite_velocity_error"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_eth_go2_closed_loop.yaml",
+      "controller_config_source_sha256": "9b595cfaeda652c38a32ab540b56b9e26a4220b6c84e35309a8dd76dea178694",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 0.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "constant",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 5.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "eth",
+      "method_definition": {
+        "fidelity": "constant_wrench_specialization",
+        "public_name": "ETH",
+        "representation": "direct_parameter",
+        "update": "identity_regressor_tracking_adaptation"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_liu_hybrid_go2.yaml",
+      "controller_config_source_sha256": "5033638316ff4230816e8b82b4dd5408fa98330f064b8bc90e9089d45915dbc2",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 0.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "constant",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 5.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "liu_van_mpc_port",
+      "method_definition": {
+        "fidelity": "architecture_preserving_go2_port",
+        "public_name": "Liu-VAN",
+        "representation": "dual_gaussian_rbf",
+        "update": "composite_error_variable_step"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_zhou_ssi_rff_go2.yaml",
+      "controller_config_source_sha256": "8d6f7c3cf2b3a6c20087f2c5e330592c8f12c0d2dfc16540e5ff7dc5e7d4dab6",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 0.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "constant",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 5.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "zhou_ssi",
+      "method_definition": {
+        "fidelity": "interface_matched_rff_ogd",
+        "public_name": "Zhou-RFF",
+        "representation": "random_fourier_features",
+        "update": "self_supervised_online_gradient_descent"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_v11_equivalent_wrench_go2.yaml",
+      "controller_config_source_sha256": "ff1047d5e98244b0554211f7a4e0027903ba9707a0eab96d050279bd25558949",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 5.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "sine",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "body_equivalent_uncertainty_about_com_left_hand",
+      "gait": "trot",
+      "gui": false,
+      "method": "v11_equivalent_wrench",
+      "method_definition": {
+        "clf_mode": "soft_squared_hinge",
+        "clf_penalty_weight": 1e-05,
+        "fidelity": "word_v1_1_fixed_gain_with_user_approved_soft_clf",
+        "public_name": "MyRBF V1.1",
+        "representation": "six_independent_scalar_gaussian_rbf_25_plus_bias",
+        "update": "negative_gamma_h_G_transpose_composite_velocity_error"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_eth_go2_closed_loop.yaml",
+      "controller_config_source_sha256": "9b595cfaeda652c38a32ab540b56b9e26a4220b6c84e35309a8dd76dea178694",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 5.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "sine",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "eth",
+      "method_definition": {
+        "fidelity": "constant_wrench_specialization",
+        "public_name": "ETH",
+        "representation": "direct_parameter",
+        "update": "identity_regressor_tracking_adaptation"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_liu_hybrid_go2.yaml",
+      "controller_config_source_sha256": "5033638316ff4230816e8b82b4dd5408fa98330f064b8bc90e9089d45915dbc2",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 5.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "sine",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "liu_van_mpc_port",
+      "method_definition": {
+        "fidelity": "architecture_preserving_go2_port",
+        "public_name": "Liu-VAN",
+        "representation": "dual_gaussian_rbf",
+        "update": "composite_error_variable_step"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_zhou_ssi_rff_go2.yaml",
+      "controller_config_source_sha256": "8d6f7c3cf2b3a6c20087f2c5e330592c8f12c0d2dfc16540e5ff7dc5e7d4dab6",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 5.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "sine",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "zhou_ssi",
+      "method_definition": {
+        "fidelity": "interface_matched_rff_ogd",
+        "public_name": "Zhou-RFF",
+        "representation": "random_fourier_features",
+        "update": "self_supervised_online_gradient_descent"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_v11_equivalent_wrench_go2.yaml",
+      "controller_config_source_sha256": "ff1047d5e98244b0554211f7a4e0027903ba9707a0eab96d050279bd25558949",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 3.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "multisine",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 2.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "body_equivalent_uncertainty_about_com_left_hand",
+      "gait": "trot",
+      "gui": false,
+      "method": "v11_equivalent_wrench",
+      "method_definition": {
+        "clf_mode": "soft_squared_hinge",
+        "clf_penalty_weight": 1e-05,
+        "fidelity": "word_v1_1_fixed_gain_with_user_approved_soft_clf",
+        "public_name": "MyRBF V1.1",
+        "representation": "six_independent_scalar_gaussian_rbf_25_plus_bias",
+        "update": "negative_gamma_h_G_transpose_composite_velocity_error"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_eth_go2_closed_loop.yaml",
+      "controller_config_source_sha256": "9b595cfaeda652c38a32ab540b56b9e26a4220b6c84e35309a8dd76dea178694",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 3.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "multisine",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 2.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "eth",
+      "method_definition": {
+        "fidelity": "constant_wrench_specialization",
+        "public_name": "ETH",
+        "representation": "direct_parameter",
+        "update": "identity_regressor_tracking_adaptation"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_liu_hybrid_go2.yaml",
+      "controller_config_source_sha256": "5033638316ff4230816e8b82b4dd5408fa98330f064b8bc90e9089d45915dbc2",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 3.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "multisine",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 2.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "liu_van_mpc_port",
+      "method_definition": {
+        "fidelity": "architecture_preserving_go2_port",
+        "public_name": "Liu-VAN",
+        "representation": "dual_gaussian_rbf",
+        "update": "composite_error_variable_step"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_zhou_ssi_rff_go2.yaml",
+      "controller_config_source_sha256": "8d6f7c3cf2b3a6c20087f2c5e330592c8f12c0d2dfc16540e5ff7dc5e7d4dab6",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 3.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "multisine",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 2.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "zhou_ssi",
+      "method_definition": {
+        "fidelity": "interface_matched_rff_ogd",
+        "public_name": "Zhou-RFF",
+        "representation": "random_fourier_features",
+        "update": "self_supervised_online_gradient_descent"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "main",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_v11_equivalent_wrench_go2.yaml",
+      "controller_config_source_sha256": "ff1047d5e98244b0554211f7a4e0027903ba9707a0eab96d050279bd25558949",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 0.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "none",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "body_equivalent_uncertainty_about_com_left_hand",
+      "gait": "trot",
+      "gui": false,
+      "method": "v11_equivalent_wrench",
+      "method_definition": {
+        "clf_mode": "soft_squared_hinge",
+        "clf_penalty_weight": 1e-05,
+        "fidelity": "word_v1_1_fixed_gain_with_user_approved_soft_clf",
+        "public_name": "MyRBF V1.1",
+        "representation": "six_independent_scalar_gaussian_rbf_25_plus_bias",
+        "update": "negative_gamma_h_G_transpose_composite_velocity_error"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "no_force",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_eth_go2_closed_loop.yaml",
+      "controller_config_source_sha256": "9b595cfaeda652c38a32ab540b56b9e26a4220b6c84e35309a8dd76dea178694",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 0.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "none",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "eth",
+      "method_definition": {
+        "fidelity": "constant_wrench_specialization",
+        "public_name": "ETH",
+        "representation": "direct_parameter",
+        "update": "identity_regressor_tracking_adaptation"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "no_force",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_liu_hybrid_go2.yaml",
+      "controller_config_source_sha256": "5033638316ff4230816e8b82b4dd5408fa98330f064b8bc90e9089d45915dbc2",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 0.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "none",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "liu_van_mpc_port",
+      "method_definition": {
+        "fidelity": "architecture_preserving_go2_port",
+        "public_name": "Liu-VAN",
+        "representation": "dual_gaussian_rbf",
+        "update": "composite_error_variable_step"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "no_force",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    },
+    {
+      "constraint_comparison_note": "Terrain traversal is not claimed; controller structural differences remain documented.",
+      "constraint_surface_normal_world": [
+        0,
+        0,
+        1
+      ],
+      "controller_config_source": "/mnt/d/GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_zhou_ssi_rff_go2.yaml",
+      "controller_config_source_sha256": "8d6f7c3cf2b3a6c20087f2c5e330592c8f12c0d2dfc16540e5ff7dc5e7d4dab6",
+      "data_kind": "simulation",
+      "disturbance": {
+        "amplitude": 0.0,
+        "axis": "fy",
+        "body": "go2::base",
+        "command_hold_s": 0.25,
+        "delay_s": 0.0,
+        "duration_s": 33.0,
+        "frequency": 0.15,
+        "phase_deg": 90.0,
+        "profile": "none",
+        "rate_hz": 20.0,
+        "reference_frame": "world",
+        "reference_point": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reference_point_source": "gazebo_world_net_wrench_zero_offset",
+        "secondary_amplitude": 0.0,
+        "secondary_frequency": 0.3,
+        "secondary_phase_deg": 90.0,
+        "torque_about": "go2::base link center of mass",
+        "value": 0.0,
+        "withdrawn_during_recording": false
+      },
+      "experiment": "GO2-METHOD-COMPARISON",
+      "force_estimate_convention": "world_compensation_wrench_about_base_origin",
+      "gait": "trot",
+      "gui": false,
+      "method": "zhou_ssi",
+      "method_definition": {
+        "fidelity": "interface_matched_rff_ogd",
+        "public_name": "Zhou-RFF",
+        "representation": "random_fourier_features",
+        "update": "self_supervised_online_gradient_descent"
+      },
+      "physics_step_s": 0.001,
+      "planner": {
+        "com_height_m": 0.33,
+        "command_vx_mps": 0.45,
+        "command_vy_mps": 0.0,
+        "command_yaw_rate_rps": 0.0,
+        "frame": "body",
+        "gait_lead_s": 0.6,
+        "heading_reference": "hold_initial_heading",
+        "linear_velocity_target": "world_normalized_momentum_first3",
+        "ramp_duration_s": 2.0,
+        "rate_hz": 20.0,
+        "reference_profile": "smooth_start_constant_velocity",
+        "source": "cmd_vel",
+        "terminal_hold_s": 0.0,
+        "trajectory_id": "velocity",
+        "trajectory_name": "constant_body_forward_velocity"
+      },
+      "repetition": 1,
+      "robot": "go2",
+      "robust_mode": "none",
+      "schema_version": 2,
+      "seed": 4102,
+      "simulator": "Gazebo Classic",
+      "status": "planned",
+      "study": "no_force",
+      "terrain": "flat",
+      "terrain_conditions": {
+        "motion": true,
+        "purpose": "flat_control_trial",
+        "spawn": [
+          0,
+          0,
+          0.35,
+          0
+        ],
+        "surface_height_m": 0.0,
+        "surface_normal_world": [
+          0,
+          0,
+          1
+        ]
+      },
+      "timing_s": {
+        "final_hold": 0.0,
+        "goal_delay": 3.0,
+        "total": 33.0,
+        "trajectory": 30.0
+      },
+      "variant": "standard"
+    }
+  ],
+  "schema_version": 1
+}

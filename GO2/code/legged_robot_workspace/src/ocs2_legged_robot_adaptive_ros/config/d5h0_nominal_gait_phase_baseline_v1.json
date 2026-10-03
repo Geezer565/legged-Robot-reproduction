@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "stage": "D5H0_shadow_diagnostics",
+  "role": "diagnostic_only_nominal_gait_phase_drive_baseline",
+  "shadow_only": true,
+  "parameterization": "payload_inertial_10d",
+  "parameter_order": [
+    "m", "hx", "hy", "hz", "Jxx", "Jxy", "Jxz", "Jyy", "Jyz", "Jzz"
+  ],
+  "quantity": "Y_transpose_sigma_before_Gamma",
+  "units": "parameter-rate-before-Gamma; component dependent",
+  "phase_bins": 24,
+  "gait": {
+    "name": "static_walk",
+    "mode_sequence": [13, 7, 14, 11],
+    "switching_times_s": [0.0, 0.3, 0.6, 0.9, 1.2],
+    "cycle_duration_s": 1.2
+  },
+  "steady_cycle_rule": "complete executed 13->7->14->11->13 cycles with cycle start >= 2.2 s",
+  "training": {
+    "source_stage": "D5G_offline_candidate_screen_v3",
+    "source_directory": "/home/ubuntu22/catkin_ws/records/task_d_payload_inertial_10d/stage_d5g_offline_candidate_screen_v3",
+    "source_groups": ["D5B nominal_walk_target run_01", "run_02", "run_03"],
+    "uncertain_or_payload_data_used": false,
+    "aggregation": "duration-weighted mean Y^T sigma in each normalized phase bin",
+    "evaluation_policy": "D5H0 acquisitions are new held-out runs; the fixed three-run nominal training set is never updated online"
+  },
+  "source_baseline_sha256": "8bc244630b9f25726f4361431dd0d387f713ac70ae7fb0df635143109cbc7d94",
+  "packaged_canonical_lf_sha256": "541ee9118f6e772d01a48daafae7097b91ddb8f9b9cd95e7fa7d38c12af2ac68",
+  "line_ending_note": "The frozen D5G CSV used CRLF. The packaged copy is content-identical after stripping CR and uses canonical LF for source control.",
+  "source_summary_sha256": "f495954db0c5b4cd61804f96ca7448ea0ca2818017ff635bca29b2d899ae5c3e",
+  "application": {
+    "enabled_for_estimator": false,
+    "enabled_for_eq10": false,
+    "enabled_for_policy": false,
+    "formula": "shadow_corrected_drive = Y^T sigma - nominal_phase_baseline",
+    "warning": "This artifact is a fixed-condition calibration candidate, not new payload information and not an online control modification."
+  }
+}

@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- RBF Phase 2B pilot entry point.  The dummy's existing world-frame
+       matched-wrench path is used directly: [Fx, Fy, Fz, Tx, Ty, Tz]. -->
+  <arg name="adaptiveSettingsFile" default="$(find ocs2_legged_robot_adaptive)/config/adaptive_settings_constant_wrench_6d_force_only_clf_off.info"/>
+  <arg name="disturbance_enabled" default="true"/>
+  <arg name="disturbance_start_time" default="4.0"/>
+  <arg name="disturbance_end_time" default="18.0"/>
+  <arg name="disturbance_fx" default="0.0"/>
+  <arg name="disturbance_fy" default="0.0"/>
+  <arg name="disturbance_fz" default="0.0"/>
+  <arg name="disturbance_tx" default="0.0"/>
+  <arg name="disturbance_ty" default="0.0"/>
+  <arg name="disturbance_tz" default="0.0"/>
+  <arg name="target_step" default="0.10"/>
+  <arg name="target_start_time" default="1.20"/>
+
+  <include file="$(find ocs2_legged_robot_adaptive_ros)/launch/legged_robot_adaptive_ddp.launch">
+    <arg name="rviz" value="false"/>
+    <arg name="multiplot" value="false"/>
+    <arg name="adaptiveSettingsFile" value="$(arg adaptiveSettingsFile)"/>
+    <arg name="disturbance_enabled" value="$(arg disturbance_enabled)"/>
+    <arg name="disturbance_start_time" value="$(arg disturbance_start_time)"/>
+    <arg name="disturbance_end_time" value="$(arg disturbance_end_time)"/>
+    <arg name="disturbance_fx" value="$(arg disturbance_fx)"/>
+    <arg name="disturbance_fy" value="$(arg disturbance_fy)"/>
+    <arg name="disturbance_fz" value="$(arg disturbance_fz)"/>
+    <arg name="disturbance_tx" value="$(arg disturbance_tx)"/>
+    <arg name="disturbance_ty" value="$(arg disturbance_ty)"/>
+    <arg name="disturbance_tz" value="$(arg disturbance_tz)"/>
+    <arg name="true_plant_mass_scale" value="1.0"/>
+    <arg name="task_c_diagnostics_enabled" value="false"/>
+  </include>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros" type="aclf_observation_monitor.py"
+        name="rbf_wrench_pilot_observation_monitor" output="screen"/>
+  <node pkg="ocs2_legged_robot_adaptive_ros" type="deterministic_locomotion_scheduler"
+        name="rbf_wrench_pilot_scheduler" output="screen">
+    <param name="target_step" value="$(arg target_step)"/>
+    <param name="target_start_time" value="$(arg target_start_time)"/>
+    <param name="experiment_condition" value="walk_target"/>
+  </node>
+</launch>

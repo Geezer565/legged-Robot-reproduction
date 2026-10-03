@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- D2 structural smoke only: no formal campaign or parameter tuning. -->
+  <arg name="taskFile" default="$(find ocs2_legged_robot)/config/mpc/task.info"/>
+  <arg name="referenceFile" default="$(find ocs2_legged_robot)/config/command/reference.info"/>
+  <arg name="urdfFile" default="$(find ocs2_robotic_assets)/resources/anymal_c/urdf/anymal.urdf"/>
+  <arg name="gaitCommandFile" default="$(find ocs2_legged_robot)/config/command/gait.info"/>
+  <arg name="adaptiveSettingsFile"
+       default="$(find ocs2_legged_robot_adaptive)/config/adaptive_settings_payload_inertial_10d_smoke.info"/>
+  <arg name="target_step" default="0.10"/>
+  <arg name="target_start_time" default="1.20"/>
+
+  <!-- The already unit-tested D1 payload. Values are explicit so the smoke
+       manifest can distinguish them from controller nominal-model data. -->
+  <arg name="payload_mass" default="5.213485"/>
+  <arg name="payload_com_x" default="0.16"/>
+  <arg name="payload_com_y" default="-0.03"/>
+  <arg name="payload_com_z" default="0.09"/>
+  <arg name="payload_inertia_xx" default="0.08"/>
+  <arg name="payload_inertia_xy" default="0.0"/>
+  <arg name="payload_inertia_xz" default="0.0"/>
+  <arg name="payload_inertia_yy" default="0.10"/>
+  <arg name="payload_inertia_yz" default="0.0"/>
+  <arg name="payload_inertia_zz" default="0.12"/>
+
+  <param name="legged_robot_description" textfile="$(arg urdfFile)"/>
+  <param name="taskFile" value="$(arg taskFile)"/>
+  <param name="referenceFile" value="$(arg referenceFile)"/>
+  <param name="urdfFile" value="$(arg urdfFile)"/>
+  <param name="gaitCommandFile" value="$(arg gaitCommandFile)"/>
+  <param name="adaptiveSettingsFile" value="$(arg adaptiveSettingsFile)"/>
+  <param name="multiplot" value="false"/>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="legged_robot_adaptive_ddp_mpc"
+        name="legged_robot_adaptive_ddp_mpc" output="screen"/>
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="legged_robot_adaptive_dummy"
+        name="legged_robot_adaptive_dummy" output="screen">
+    <param name="disturbance_enabled" value="false"/>
+    <param name="true_plant_mass_scale" value="1.0"/>
+    <param name="task_c_diagnostics_enabled" value="false"/>
+    <param name="true_plant_payload_inertial_enabled" value="true"/>
+    <param name="true_plant_payload_mass" value="$(arg payload_mass)"/>
+    <param name="true_plant_payload_com_x" value="$(arg payload_com_x)"/>
+    <param name="true_plant_payload_com_y" value="$(arg payload_com_y)"/>
+    <param name="true_plant_payload_com_z" value="$(arg payload_com_z)"/>
+    <param name="true_plant_payload_inertia_xx" value="$(arg payload_inertia_xx)"/>
+    <param name="true_plant_payload_inertia_xy" value="$(arg payload_inertia_xy)"/>
+    <param name="true_plant_payload_inertia_xz" value="$(arg payload_inertia_xz)"/>
+    <param name="true_plant_payload_inertia_yy" value="$(arg payload_inertia_yy)"/>
+    <param name="true_plant_payload_inertia_yz" value="$(arg payload_inertia_yz)"/>
+    <param name="true_plant_payload_inertia_zz" value="$(arg payload_inertia_zz)"/>
+  </node>
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="aclf_observation_monitor.py"
+        name="task_d_payload_inertial_monitor" output="screen"/>
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="deterministic_locomotion_scheduler"
+        name="task_d_payload_inertial_scheduler" output="screen">
+    <param name="target_step" value="$(arg target_step)"/>
+    <param name="target_start_time" value="$(arg target_start_time)"/>
+  </node>
+</launch>

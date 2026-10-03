@@ -1,0 +1,31 @@
+# Liu VAN-MPC architecture port to the Go2 six-dimensional wrench interface.
+# It preserves dual Gaussian networks, composite error and variable step size.
+# It is a platform port, not the original spherical-robot command planner.
+algorithm: v1
+estimator_version: liu_dual_rbf
+comparison_method: liu_van_mpc_port
+representation: dual_gaussian_rbf
+update_period: 0.01
+time_tolerance: 0.003
+filter_alpha: 0.5
+lambda_linear: 2.0
+lambda_angular: 1.5
+residual_scale: [18.40147689318011, 18.757520233566048, 17.534482646627026, 2.3370077074651903, 5.4660415889306133, 1.7261893548458138]
+discrepancy_scale: [18.40147689318011, 18.757520233566048, 17.534482646627026, 2.3370077074651903, 5.4660415889306133, 1.7261893548458138]
+output_scale: [18.40147689318011, 18.757520233566048, 17.534482646627026, 2.3370077074651903, 5.4660415889306133, 1.7261893548458138]
+comparison_tracking_scale: [1, 1, 1, 1, 1, 1]
+comparison_adaptation_gain: [0.025, 0.025, 0.025, 0.025, 0.025, 0.025]
+comparison_gaussian_width: 0.5
+comparison_composite_ratio: 0.75
+comparison_minimum_step: 0.2
+comparison_maximum_step: 1.0
+weight_limit: [20, 20, 30, 5, 5, 5]
+control_interface: wrench_allocator
+compensation_aware_observer: true
+control_gain_vector: [0.25, 0.50, 0.50, 0.50, 0.08, 0.08]
+control_magnitude_limit: [8.0, 8.0, 15.0, 1.5, 1.5, 1.5]
+control_rate_limit_vector: [20.0, 20.0, 30.0, 3.0, 3.0, 3.0]
+allocator_friction_coefficient: 0.5
+allocator_minimum_normal_force: 2.0
+allocator_maximum_force_delta: 15.0
+allocator_damping: 0.00001

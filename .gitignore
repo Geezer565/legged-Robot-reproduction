@@ -19,3 +19,10 @@ cmake-build-*/
 
 .worktrees/
 .superpowers/sdd/
+
+# V1.1: raw experiments are distributed separately as a release asset.
+GO2/code/legged_robot_workspace/.deps-build/
+GO2/experi/results/v1_1/*
+!GO2/experi/results/v1_1/20261001_comparison_delivery/
+# These are supplied SDK libraries, not build cache.
+!GO2/code/legged_robot_workspace/**/thirdparty/lib/**/*.so

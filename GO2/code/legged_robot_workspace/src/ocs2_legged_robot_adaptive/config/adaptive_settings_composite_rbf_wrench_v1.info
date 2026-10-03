@@ -1,0 +1,52 @@
+; Neural-Fly-inspired composite RBF experiment. Baseline and current RBF files are unchanged.
+adaptive_clf_mpc
+{
+  enableParameterUpdate  true
+  enableAdaptiveDynamics true
+  enableClfConstraint     true
+  enableInputBiasCost     false
+  useSoftConstraint       true
+  softConstraintMu        0.1
+  softConstraintDelta     5.0
+  timestampTolerance      1e-9
+  parameterization        constant_wrench_6d
+  lambdaLinear { (0,0) 2.0 (1,1) 2.0 (2,2) 2.0 }
+  lambdaAngular { (0,0) 1.5 (1,1) 1.5 (2,2) 1.5 }
+  gamma { (0,0) 3.0 (1,1) 3.0 (2,2) 3.0 (3,3) 1.5 (4,4) 1.5 (5,5) 1.5 }
+  kd {
+    (0,0) 1.0 (0,1) 0.0 (0,2) 0.0 (0,3) 0.0 (0,4) 0.0 (0,5) 0.0
+    (1,0) 0.0 (1,1) 1.0 (1,2) 0.0 (1,3) 0.0 (1,4) 0.0 (1,5) 0.0
+    (2,0) 0.0 (2,1) 0.0 (2,2) 1.0 (2,3) 0.0 (2,4) 0.0 (2,5) 0.0
+    (3,0) 0.0 (3,1) 0.0 (3,2) 0.0 (3,3) 1.0 (3,4) 0.0 (3,5) 0.0
+    (4,0) 0.0 (4,1) 0.0 (4,2) 0.0 (4,3) 0.0 (4,4) 1.0 (4,5) 0.0
+    (5,0) 0.0 (5,1) 0.0 (5,2) 0.0 (5,3) 0.0 (5,4) 0.0 (5,5) 1.0
+  }
+  initialParameterEstimate {
+    (0,0) 0.0 (1,0) 0.0 (2,0) 0.0 (3,0) 0.0 (4,0) 0.0 (5,0) 0.0
+  }
+}
+
+rbf_wrench_closed_loop
+{
+  enabled                  true
+  method                   composite_rbf
+  basisFile                rbf_wrench_two_feature_six_subnetwork_v1.info
+  enableResidualFilter     true
+  residualFilterAlpha      0.5
+  observationTimeTolerance 1e-6
+  ; Tracking term matches the current RBF. Prediction and leakage are isolated additions.
+  ; A 0.0001 prediction gain retained the active improvement and recovered better
+  ; than the initial 0.0002 trial, so the smaller value is used for formal runs.
+  trackingGain {
+    (0,0) 0.25 (1,0) 0.25 (2,0) 0.25
+    (3,0) 0.25 (4,0) 0.25 (5,0) 0.25
+  }
+  predictionGain {
+    (0,0) 0.0001 (1,0) 0.0001 (2,0) 0.0001
+    (3,0) 0.0001 (4,0) 0.0001 (5,0) 0.0001
+  }
+  leakage {
+    (0,0) 0.02 (1,0) 0.02 (2,0) 0.02
+    (3,0) 0.02 (4,0) 0.02 (5,0) 0.02
+  }
+}

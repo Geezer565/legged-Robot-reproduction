@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "stage": "D5H1_PhaseBaselineCorrected",
+  "role": "default-off estimator update-drive correction",
+  "parameterization": "payload_inertial_10d",
+  "formula": "pi_hat_dot = Gamma * (Y^T sigma - nominal_phase_baseline)",
+  "default_off": true,
+  "startup_gate_used": false,
+  "confidence_gate_used": false,
+  "gamma_modified": false,
+  "baseline": {
+    "packaged_file": "d5h0_nominal_gait_phase_baseline_v1.csv",
+    "packaged_canonical_lf_sha256": "541ee9118f6e772d01a48daafae7097b91ddb8f9b9cd95e7fa7d38c12af2ac68",
+    "quantity": "Y_transpose_sigma_before_Gamma",
+    "phase_bins": 24,
+    "aggregation": "duration-weighted nominal mean in each normalized gait-phase bin"
+  },
+  "training": {
+    "source_stage": "D5G_offline_candidate_screen_v3",
+    "source_directory": "/home/ubuntu22/catkin_ws/records/task_d_payload_inertial_10d/stage_d5g_offline_candidate_screen_v3",
+    "source_groups": [
+      "D5B nominal_walk_target run_01",
+      "D5B nominal_walk_target run_02",
+      "D5B nominal_walk_target run_03"
+    ],
+    "uncertain_or_payload_data_used": false,
+    "source_baseline_file": "nominal_gait_phase_baseline.csv",
+    "source_baseline_sha256": "8bc244630b9f25726f4361431dd0d387f713ac70ae7fb0df635143109cbc7d94",
+    "source_summary_file": "stage_d5g_summary.json",
+    "source_summary_sha256": "f495954db0c5b4cd61804f96ca7448ea0ca2818017ff635bca29b2d899ae5c3e",
+    "source_manifest_file": "stage_d5g_artifact_manifest.json",
+    "source_manifest_sha256": "eb7410c41c955c6125b053d1faa4aef475224ec2c63c8cf155475f897b59d3b4"
+  },
+  "held_out_shadow_validation": {
+    "source_stage": "D5H0_shadow_v1_analysis_v3",
+    "source_summary": "/home/ubuntu22/catkin_ws/records/task_d_payload_inertial_10d/stage_d5h0_shadow_v1/analysis_v3/stage_d5h0_campaign_summary.json",
+    "source_summary_sha256": "0cb8040bbc0333a6407b72e9f3069c886df91f8c59846cc174ad3f08bc37829f",
+    "passed": true,
+    "nominal_mean_suppression_fraction": 0.9791084900291716,
+    "payload_contrast_norm_retention_fraction": 1.0251350104817638
+  },
+  "runtime_contract": {
+    "gait_name": "static_walk",
+    "mode_sequence": [13, 7, 14, 11],
+    "cycle_duration_s": 1.2,
+    "minimum_cycle_start_time_s": 2.2,
+    "invalid_sequence_behavior": "fail closed with zero baseline",
+    "lookup_causality": "current/past executed mode transitions only; no future state, payload truth, or pi_star",
+    "historical_behavior_when_disabled": "exact original Eq.(8) update path"
+  },
+  "scientific_boundary": "This is a fixed-condition nominal calibration. It is not payload information and does not establish 10D parameter convergence."
+}

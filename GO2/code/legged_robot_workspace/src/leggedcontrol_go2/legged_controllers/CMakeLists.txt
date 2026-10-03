@@ -1,0 +1,159 @@
+cmake_minimum_required(VERSION 3.10)
+project(legged_controllers)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+## Find catkin macros and libraries
+find_package(catkin REQUIRED
+        COMPONENTS
+        roscpp
+        legged_common
+        legged_interface
+        legged_wbc
+        legged_estimation
+        controller_interface
+        gazebo_msgs
+        geometry_msgs
+        ocs2_msgs
+        ocs2_legged_robot_ros
+        ocs2_self_collision_visualization
+        angles
+        realtime_tools
+        std_msgs
+        )
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(pinocchio REQUIRED pinocchio)
+
+catkin_python_setup()
+
+catkin_package(
+        INCLUDE_DIRS
+        include
+        LIBRARIES
+        ${PROJECT_NAME}
+        CATKIN_DEPENDS
+        roscpp
+        legged_common
+        legged_interface
+        legged_wbc
+        legged_estimation
+        controller_interface
+        gazebo_msgs
+        geometry_msgs
+        ocs2_msgs
+        ocs2_legged_robot_ros
+        ocs2_self_collision_visualization
+        angles
+        realtime_tools
+        std_msgs
+)
+
+###########
+## Build ##
+###########
+
+include_directories(
+        include
+        ${catkin_INCLUDE_DIRS}
+        ${pinocchio_INCLUDE_DIRS}
+)
+
+link_directories(
+        ${pinocchio_LIBRARY_DIRS}
+)
+
+## Declare a cpp library
+add_library(${PROJECT_NAME}
+        src/LeggedController.cpp
+        src/MyRbfV2Control.cpp
+        src/MyRbfV5Control.cpp
+        src/MyRbfV11Control.cpp
+        )
+
+target_link_libraries(${PROJECT_NAME}
+        ${catkin_LIBRARIES}
+        ${pinocchio_LIBRARIES}
+        )
+
+target_compile_options(${PROJECT_NAME} PUBLIC ${OCS2_CXX_FLAGS})
+
+
+# Target trajectories publish node
+add_executable(legged_target_trajectories_publisher
+        src/TargetTrajectoriesPublisher.cpp
+        )
+add_dependencies(legged_target_trajectories_publisher
+        ${PROJECT_NAME}
+        ${catkin_EXPORTED_TARGETS}
+        )
+target_link_libraries(legged_target_trajectories_publisher
+        ${PROJECT_NAME}
+        ${catkin_LIBRARIES}
+        )
+target_compile_options(legged_target_trajectories_publisher PRIVATE ${OCS2_CXX_FLAGS})
+
+catkin_install_python(PROGRAMS
+        scripts/run_go2_method_comparison.py
+        scripts/plot_go2_method_comparison.py
+        scripts/record_adaptive_wrench.py
+        scripts/apply_myrbf_wrench.py
+        scripts/publish_myrbf_motion.py
+        scripts/publish_tp01_goal.py
+        scripts/record_myrbf_shadow.py
+        scripts/record_tp01_target.py
+        scripts/record_stage8c.py
+        scripts/unpause_when_controller_ready.py
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+        )
+
+if (CATKIN_ENABLE_TESTING)
+    catkin_add_gtest(${PROJECT_NAME}_myrbf_v2_policy_binding_test test/TestMyRbfV2PolicyBinding.cpp)
+    target_link_libraries(${PROJECT_NAME}_myrbf_v2_policy_binding_test ${catkin_LIBRARIES} ${pinocchio_LIBRARIES} gtest_main)
+    target_compile_options(${PROJECT_NAME}_myrbf_v2_policy_binding_test PUBLIC ${OCS2_CXX_FLAGS})
+    catkin_add_nosetests(test/test_current_go2_method_comparison.py)
+    catkin_add_nosetests(test/test_myrbf_shadow_recording.py)
+    catkin_add_nosetests(test/test_myrbf_wrench_profile.py)
+    catkin_add_nosetests(test/test_myrbf_wrench_phase.py)
+    catkin_add_nosetests(test/test_tp01_goal_publisher.py)
+    catkin_add_nosetests(test/test_tp01_target_recorder.py)
+    catkin_add_nosetests(test/test_tp01_trajectory.py)
+    catkin_add_nosetests(test/test_myrbf_motion_profile.py)
+    catkin_add_nosetests(test/test_myrbf_campaign_timing.py)
+endif ()
+
+#########################
+###   CLANG TOOLING   ###
+#########################
+find_package(cmake_clang_tools QUIET)
+if (cmake_clang_tools_FOUND)
+    message(STATUS "Run clang tooling for target " ${PROJECT_NAME})
+    add_clang_tooling(
+            TARGETS ${PROJECT_NAME} legged_target_trajectories_publisher
+            SOURCE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include
+            CT_HEADER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
+            CF_WERROR
+    )
+endif (cmake_clang_tools_FOUND)
+
+#############
+## Install ##
+#############
+
+# Mark executables and/or libraries for installation
+install(TARGETS ${PROJECT_NAME}
+        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+        )
+
+# Mark cpp header files for installation
+install(DIRECTORY include/${PROJECT_NAME}/
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+        FILES_MATCHING PATTERN "*.h"
+        )
+
+# Install plugins
+install(FILES legged_controllers_plugins.xml
+        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+        )

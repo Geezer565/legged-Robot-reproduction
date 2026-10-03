@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- PayloadMass1D development smoke only; never writes into frozen Task C. -->
+  <arg name="true_plant_mass_scale" default="1.10"/>
+  <arg name="target_start_time" default="0.50"/>
+  <arg name="target_step" default="0.10"/>
+  <arg name="adaptiveSettingsFile"
+       default="$(find ocs2_legged_robot_adaptive)/config/adaptive_settings_payload_mass_1d.info"/>
+
+  <include file="$(find ocs2_legged_robot_adaptive_ros)/launch/task_c_mass_smoke.launch">
+    <arg name="true_plant_mass_scale" value="$(arg true_plant_mass_scale)"/>
+    <arg name="target_start_time" value="$(arg target_start_time)"/>
+    <arg name="target_step" value="$(arg target_step)"/>
+    <arg name="adaptiveSettingsFile" value="$(arg adaptiveSettingsFile)"/>
+  </include>
+</launch>

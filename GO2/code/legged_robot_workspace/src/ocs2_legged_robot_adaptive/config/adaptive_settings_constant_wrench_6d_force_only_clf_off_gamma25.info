@@ -1,0 +1,16 @@
+; Dedicated force-only identification baseline: no inertial parameters and no CLF constraint.
+adaptive_clf_mpc {
+  parameterization constant_wrench_6d
+  enableParameterUpdate true
+  enableAdaptiveDynamics true
+  enableClfConstraint false
+  useSoftConstraint true
+  softConstraintMu 0.1
+  softConstraintDelta 5.0
+  minimumEstimatedTotalMass 1.0
+  lambdaLinear { (0,0) 2.0 (1,1) 2.0 (2,2) 2.0 }
+  lambdaAngular { (0,0) 1.5 (1,1) 1.5 (2,2) 1.5 }
+  gamma { (0,0) 25.0 (1,1) 3.0 (2,2) 3.0 (3,3) 1.5 (4,4) 1.5 (5,5) 1.5 }
+  kd { (0,0) 1.0 (1,1) 1.0 (2,2) 1.0 (3,3) 1.0 (4,4) 1.0 (5,5) 1.0 }
+  initialParameterEstimate { (0,0) 0.0 (1,0) 0.0 (2,0) 0.0 (3,0) 0.0 (4,0) 0.0 (5,0) 0.0 }
+}

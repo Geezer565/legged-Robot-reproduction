@@ -1,0 +1,32 @@
+name: legged-robot-reproduction
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: legged-robot-noetic:ubuntu20.04
+    container_name: legged-robot-noetic
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    stdin_open: true
+    tty: true
+    gpus: all
+    shm_size: "2gb"
+    environment:
+      ROBOT_TYPE: go2
+      DISPLAY: ${DISPLAY:-host.docker.internal:0.0}
+      QT_X11_NO_MITSHM: "1"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+      CCACHE_DIR: /ccache
+      GO2_EXPERIMENT_ROOT: /experi
+    volumes:
+      - "D:/GO2/code/legged_robot_workspace:/workspace"
+      - "D:/GO2/experi:/experi"
+      - ros-home:/root/.ros
+      - ccache:/ccache
+
+volumes:
+  ros-home:
+  ccache:

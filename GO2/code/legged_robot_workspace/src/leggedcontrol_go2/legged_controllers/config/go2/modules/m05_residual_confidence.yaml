@@ -1,0 +1,18 @@
+module:
+  name: residual_confidence
+  mode: shadow
+  enabled: false
+  shadow_only: true
+  input_wrench_order: [Fx, Fy, Fz, Tx, Ty, Tz]
+  rise_time: 0.4
+  fall_time: 0.03
+  contact_transition_hold_time: 0.05
+  minimum_injection_confidence: 0.3
+  full_injection_confidence: 0.8
+  minimum_coverage: 0.15
+  full_coverage: 0.55
+  residual_deadband: [2.0, 2.0, 3.0, 0.4, 0.4, 0.4]
+  maximum_wrench: [80.0, 80.0, 120.0, 20.0, 20.0, 20.0]
+  maximum_estimate_rate: [500.0, 500.0, 700.0, 100.0, 100.0, 100.0]
+  maximum_gated_wrench_rate: [300.0, 300.0, 400.0, 60.0, 60.0, 60.0]
+

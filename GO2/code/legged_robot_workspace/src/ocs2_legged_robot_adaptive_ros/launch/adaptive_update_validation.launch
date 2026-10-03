@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="taskFile" default="$(find ocs2_legged_robot)/config/mpc/task.info"/>
+  <arg name="referenceFile" default="$(find ocs2_legged_robot)/config/command/reference.info"/>
+  <arg name="urdfFile" default="$(find ocs2_robotic_assets)/resources/anymal_c/urdf/anymal.urdf"/>
+  <arg name="gaitCommandFile" default="$(find ocs2_legged_robot)/config/command/gait.info"/>
+  <arg name="adaptiveSettingsFile" default=""/>
+  <arg name="disturbance_start_time" default="1.0"/>
+  <arg name="disturbance_end_time" default="4.0"/>
+  <arg name="disturbance_fx" default="20.0"/>
+  <arg name="disturbance_fy" default="0.0"/>
+  <arg name="disturbance_fz" default="0.0"/>
+  <arg name="disturbance_tx" default="0.0"/>
+  <arg name="disturbance_ty" default="0.0"/>
+  <arg name="disturbance_tz" default="0.0"/>
+  <arg name="disturbance_profile" default="constant"/>
+  <arg name="disturbance_frequency_hz" default="0.25"/>
+  <arg name="disturbance_secondary_fx" default="0.0"/>
+  <arg name="disturbance_secondary_fy" default="0.0"/>
+  <arg name="disturbance_secondary_fz" default="0.0"/>
+  <arg name="disturbance_secondary_tx" default="0.0"/>
+  <arg name="disturbance_secondary_ty" default="0.0"/>
+  <arg name="disturbance_secondary_tz" default="0.0"/>
+  <!-- Keep Task A/B validation at the nominal plant unless explicitly overridden. -->
+  <arg name="true_plant_mass_scale" default="1.0"/>
+  <arg name="task_c_diagnostics_enabled" default="false"/>
+  <arg name="locomotion_mode" default="stance"/>
+  <arg name="walking_target_step" default="0.60"/>
+  <arg name="walking_target_start_time" default="1.20"/>
+  <arg name="walking_target_duration" default="12.0"/>
+
+  <param name="legged_robot_description" textfile="$(arg urdfFile)"/>
+  <param name="taskFile" value="$(arg taskFile)"/>
+  <param name="referenceFile" value="$(arg referenceFile)"/>
+  <param name="urdfFile" value="$(arg urdfFile)"/>
+  <param name="gaitCommandFile" value="$(arg gaitCommandFile)"/>
+  <param name="adaptiveSettingsFile" value="$(arg adaptiveSettingsFile)"/>
+  <param name="multiplot" value="false"/>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="legged_robot_adaptive_ddp_mpc"
+        name="legged_robot_adaptive_ddp_mpc"
+        output="screen"/>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros"
+        type="legged_robot_adaptive_dummy"
+        name="legged_robot_adaptive_dummy"
+        output="screen">
+    <param name="disturbance_enabled" value="true"/>
+    <param name="disturbance_start_time" value="$(arg disturbance_start_time)"/>
+    <param name="disturbance_end_time" value="$(arg disturbance_end_time)"/>
+    <param name="disturbance_fx" value="$(arg disturbance_fx)"/>
+    <param name="disturbance_fy" value="$(arg disturbance_fy)"/>
+    <param name="disturbance_fz" value="$(arg disturbance_fz)"/>
+    <param name="disturbance_tx" value="$(arg disturbance_tx)"/>
+    <param name="disturbance_ty" value="$(arg disturbance_ty)"/>
+    <param name="disturbance_tz" value="$(arg disturbance_tz)"/>
+    <param name="disturbance_profile" value="$(arg disturbance_profile)"/>
+    <param name="disturbance_frequency_hz" value="$(arg disturbance_frequency_hz)"/>
+    <param name="disturbance_secondary_fx" value="$(arg disturbance_secondary_fx)"/>
+    <param name="disturbance_secondary_fy" value="$(arg disturbance_secondary_fy)"/>
+    <param name="disturbance_secondary_fz" value="$(arg disturbance_secondary_fz)"/>
+    <param name="disturbance_secondary_tx" value="$(arg disturbance_secondary_tx)"/>
+    <param name="disturbance_secondary_ty" value="$(arg disturbance_secondary_ty)"/>
+    <param name="disturbance_secondary_tz" value="$(arg disturbance_secondary_tz)"/>
+    <param name="true_plant_mass_scale" value="$(arg true_plant_mass_scale)"/>
+    <param name="task_c_diagnostics_enabled" value="$(arg task_c_diagnostics_enabled)"/>
+  </node>
+  <node if="$(eval arg('locomotion_mode') == 'walk')"
+        pkg="ocs2_legged_robot_adaptive_ros"
+        type="deterministic_locomotion_scheduler"
+        name="adaptive_validation_locomotion_scheduler"
+        output="screen">
+    <param name="experiment_condition" value="walk_target"/>
+    <param name="target_step" value="$(arg walking_target_step)"/>
+    <param name="target_start_time" value="$(arg walking_target_start_time)"/>
+    <param name="target_duration" value="$(arg walking_target_duration)"/>
+  </node>
+</launch>

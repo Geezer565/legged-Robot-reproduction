@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <world name="myrbf_multi_terrain">
+    <gravity>0 0 -9.81</gravity>
+    <physics name="ode_1ms" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_update_rate>1000</real_time_update_rate>
+      <ode><solver><type>quick</type><iters>500</iters></solver></ode>
+    </physics>
+    <scene><ambient>0.55 0.55 0.55 1</ambient><background>0.78 0.84 0.90 1</background><shadows>true</shadows></scene>
+    <light name="sun" type="directional"><pose>0 0 10 0 0 0</pose><diffuse>0.9 0.9 0.9 1</diffuse><specular>0.15 0.15 0.15 1</specular><direction>-0.3 0.3 -1</direction><cast_shadows>true</cast_shadows></light>
+    <!-- All terrain has matching visible and collision geometry. Ground z=0. -->
+    <model name="flat_ground"><static>true</static><link name="ground">
+      <collision name="collision"><geometry><plane><normal>0 0 1</normal><size>30 20</size></plane></geometry><surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface></collision>
+      <visual name="visual"><geometry><plane><normal>0 0 1</normal><size>30 20</size></plane></geometry><material><ambient>0.65 0.68 0.70 1</ambient><diffuse>0.65 0.68 0.70 1</diffuse></material></visual>
+    </link></model>
+    <!-- Top face rises exactly 5 degrees over x=1.5..4.5. Thick slab buried at toe.
+         center x=3+0.15*sin(5deg); center z=1.5*tan(5deg)-0.15*cos(5deg).
+         No assertion that the existing flat TP01 planner can traverse this ramp. -->
+    <model name="slope_5deg"><static>true</static><pose>3.0130733614 0 -0.0181962095 0 -0.0872664626 0</pose><link name="ramp">
+      <collision name="collision"><geometry><box><size>3.0114595126 2.4 0.3</size></box></geometry><surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface></collision>
+      <visual name="visual"><geometry><box><size>3.0114595126 2.4 0.3</size></box></geometry><material><ambient>0.66 0.73 0.62 1</ambient><diffuse>0.66 0.73 0.62 1</diffuse></material></visual>
+    </link></model>
+    <model name="slope_top_platform"><static>true</static><pose>4.85 0 0.1312329953 0 0 0</pose><link name="platform">
+      <collision name="collision"><geometry><box><size>0.7 2.4 0.2624659906</size></box></geometry></collision>
+      <visual name="visual"><geometry><box><size>0.7 2.4 0.2624659906</size></box></geometry><material><ambient>0.66 0.73 0.62 1</ambient><diffuse>0.66 0.73 0.62 1</diffuse></material></visual>
+    </link></model>
+    <!-- Separate low-step zone x=6..10; each adjacent rise/drop is 0.02 m. -->
+    <model name="step_01_2cm"><static>true</static><pose>6.4 0 0.01 0 0 0</pose><link name="step">
+      <collision name="collision"><geometry><box><size>0.8 2.4 0.02</size></box></geometry></collision>
+      <visual name="visual"><geometry><box><size>0.8 2.4 0.02</size></box></geometry><material><ambient>0.70 0.62 0.51 1</ambient><diffuse>0.70 0.62 0.51 1</diffuse></material></visual>
+    </link></model>
+    <model name="step_02_4cm"><static>true</static><pose>7.2 0 0.02 0 0 0</pose><link name="step">
+      <collision name="collision"><geometry><box><size>0.8 2.4 0.04</size></box></geometry></collision>
+      <visual name="visual"><geometry><box><size>0.8 2.4 0.04</size></box></geometry><material><ambient>0.76 0.68 0.55 1</ambient><diffuse>0.76 0.68 0.55 1</diffuse></material></visual>
+    </link></model>
+    <model name="step_03_6cm"><static>true</static><pose>8 0 0.03 0 0 0</pose><link name="step">
+      <collision name="collision"><geometry><box><size>0.8 2.4 0.06</size></box></geometry></collision>
+      <visual name="visual"><geometry><box><size>0.8 2.4 0.06</size></box></geometry><material><ambient>0.70 0.62 0.51 1</ambient><diffuse>0.70 0.62 0.51 1</diffuse></material></visual>
+    </link></model>
+    <model name="step_04_4cm"><static>true</static><pose>8.8 0 0.02 0 0 0</pose><link name="step">
+      <collision name="collision"><geometry><box><size>0.8 2.4 0.04</size></box></geometry></collision>
+      <visual name="visual"><geometry><box><size>0.8 2.4 0.04</size></box></geometry><material><ambient>0.76 0.68 0.55 1</ambient><diffuse>0.76 0.68 0.55 1</diffuse></material></visual>
+    </link></model>
+    <model name="step_05_2cm"><static>true</static><pose>9.6 0 0.01 0 0 0</pose><link name="step">
+      <collision name="collision"><geometry><box><size>0.8 2.4 0.02</size></box></geometry></collision>
+      <visual name="visual"><geometry><box><size>0.8 2.4 0.02</size></box></geometry><material><ambient>0.70 0.62 0.51 1</ambient><diffuse>0.70 0.62 0.51 1</diffuse></material></visual>
+    </link></model>
+    <!-- Gazebo camera; capture sensor_msgs/Image after go2 exists, through ROS. -->
+    <model name="experiment_camera"><static>true</static><pose>-1.5 -5 5 0 0.61 0.695</pose><link name="camera_link">
+      <sensor name="scene_camera" type="camera"><always_on>true</always_on><update_rate>5</update_rate>
+        <camera><horizontal_fov>1.10</horizontal_fov><image><width>1600</width><height>900</height><format>R8G8B8</format></image><clip><near>0.1</near><far>60</far></clip></camera>
+        <plugin name="scene_camera_ros" filename="libgazebo_ros_camera.so"><robotNamespace>/myrbf_scene</robotNamespace><cameraName>overview</cameraName><imageTopicName>image_raw</imageTopicName><cameraInfoTopicName>camera_info</cameraInfoTopicName><frameName>scene_camera_optical_frame</frameName><updateRate>5</updateRate></plugin>
+      </sensor>
+    </link></model>
+  </world>
+</sdf>

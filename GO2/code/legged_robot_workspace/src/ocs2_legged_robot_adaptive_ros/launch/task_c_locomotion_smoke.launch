@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="taskFile" default="$(find ocs2_legged_robot)/config/mpc/task.info"/>
+  <arg name="referenceFile" default="$(find ocs2_legged_robot)/config/command/reference.info"/>
+  <arg name="urdfFile" default="$(find ocs2_robotic_assets)/resources/anymal_c/urdf/anymal.urdf"/>
+  <arg name="gaitCommandFile" default="$(find ocs2_legged_robot)/config/command/gait.info"/>
+  <arg name="adaptiveSettingsFile"
+       default="$(find ocs2_legged_robot_adaptive)/config/adaptive_settings_payload_mass_1d.info"/>
+  <arg name="target_step" default="0.10"/>
+  <arg name="target_start_time" default="1.20"/>
+  <arg name="true_plant_mass_scale" default="1.0"/>
+
+  <param name="legged_robot_description" textfile="$(arg urdfFile)"/>
+  <param name="taskFile" value="$(arg taskFile)"/>
+  <param name="referenceFile" value="$(arg referenceFile)"/>
+  <param name="urdfFile" value="$(arg urdfFile)"/>
+  <param name="gaitCommandFile" value="$(arg gaitCommandFile)"/>
+  <param name="adaptiveSettingsFile" value="$(arg adaptiveSettingsFile)"/>
+  <param name="multiplot" value="false"/>
+
+  <node pkg="ocs2_legged_robot_adaptive_ros" type="legged_robot_adaptive_ddp_mpc"
+        name="legged_robot_adaptive_ddp_mpc" output="screen"/>
+  <node pkg="ocs2_legged_robot_adaptive_ros" type="legged_robot_adaptive_dummy"
+        name="legged_robot_adaptive_dummy" output="screen">
+    <param name="disturbance_enabled" value="false"/>
+    <param name="true_plant_mass_scale" value="$(arg true_plant_mass_scale)"/>
+    <param name="task_c_diagnostics_enabled" value="true"/>
+  </node>
+  <node pkg="ocs2_legged_robot_adaptive_ros" type="aclf_observation_monitor.py"
+        name="task_c_locomotion_monitor" output="screen"/>
+  <node pkg="ocs2_legged_robot_adaptive_ros" type="deterministic_locomotion_scheduler"
+        name="task_c_locomotion_scheduler" output="screen">
+    <param name="target_step" value="$(arg target_step)"/>
+    <param name="target_start_time" value="$(arg target_start_time)"/>
+  </node>
+</launch>

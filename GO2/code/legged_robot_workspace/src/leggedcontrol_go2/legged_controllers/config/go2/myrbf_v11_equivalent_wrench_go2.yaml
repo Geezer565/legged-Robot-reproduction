@@ -1,0 +1,19 @@
+# Go2_RBF_ACLF_MPC_Method_V1.1.docx, 2026-09-16; fixed-gain baseline.
+# d_u=[f_body, torque_body_about_CoM], LEFT-hand uncertainty, units N/Nm.
+algorithm: v11_equivalent_wrench
+representation: six_independent_scalar_gaussian_rbf_25_plus_bias
+learning_target: equivalent_uncertainty_wrench_body_com_left_hand
+control_interface: model_and_wbc
+estimator_version: legacy
+update_period: 0.001
+time_tolerance: 0.003
+activation_warmup: 1.0
+v11_composite_ratio: 0.9
+v11_input_scale: [0.02,0.02,0.02,0.05,0.05,0.05]
+# Fixed Go2 calibration: Gamma_i * ||G[:,i]||^2 = 0.1 at nominal inertia.
+# The V1.1 weight-update equation and estimated quantity are unchanged.
+v11_gamma: [22.8221449,22.8221449,22.8221449,0.00321391182,0.0245852383,0.0257958114]
+v11_weight_limit: [20,20,20,3,3,3]
+v11_clf_decay: [0.2,0.2,0.2,0.2,0.2,0.2]
+v11_centers: [-1,-0.9166666666666666,-0.8333333333333333,-0.75,-0.6666666666666666,-0.5833333333333333,-0.5,-0.4166666666666667,-0.3333333333333333,-0.25,-0.1666666666666667,-0.0833333333333333,0,0.0833333333333333,0.1666666666666667,0.25,0.3333333333333333,0.4166666666666667,0.5,0.5833333333333333,0.6666666666666666,0.75,0.8333333333333333,0.9166666666666666,1]
+v11_widths: [0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12,0.12]

@@ -1,0 +1,13 @@
+#pragma once
+
+#include <string>
+
+namespace ocs2 {
+namespace legged_robot_adaptive {
+
+inline std::string getPath() {
+  return "@PROJECT_SOURCE_DIR@";
+}
+
+}  // namespace legged_robot_adaptive
+}  // namespace ocs2

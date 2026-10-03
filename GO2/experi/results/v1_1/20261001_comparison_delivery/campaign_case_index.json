@@ -1,0 +1,86 @@
+{
+  "cases": [
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/main__flat_velocity_fy_constant__v11_equivalent_wrench_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/main__flat_velocity_fy_constant__eth_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/main__flat_velocity_fy_constant__liu_van_mpc_port_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/main__flat_velocity_fy_constant__zhou_ssi_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/main__flat_velocity_fy_sine__v11_equivalent_wrench_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/main__flat_velocity_fy_sine__eth_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/main__flat_velocity_fy_sine__liu_van_mpc_port_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20261001T030145.612466Z_bcc7525f/main__flat_velocity_fy_sine__zhou_ssi_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/main__flat_velocity_fy_multisine__v11_equivalent_wrench_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/main__flat_velocity_fy_multisine__eth_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20261001T025334.408185Z_6ecd26b5/main__flat_velocity_fy_multisine__liu_van_mpc_port_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/main__flat_velocity_fy_multisine__zhou_ssi_standard__r001",
+      "study": "main",
+      "variant": "standard"
+    },
+    {
+      "path": "../20261001T030544.049194Z_fbbb931c/no_force__flat_velocity_fy_none__v11_equivalent_wrench_standard__r001",
+      "study": "no_force",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/no_force__flat_velocity_fy_none__eth_standard__r001",
+      "study": "no_force",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/no_force__flat_velocity_fy_none__liu_van_mpc_port_standard__r001",
+      "study": "no_force",
+      "variant": "standard"
+    },
+    {
+      "path": "../20260930T144035.376750Z_2180a5f3/no_force__flat_velocity_fy_none__zhou_ssi_standard__r001",
+      "study": "no_force",
+      "variant": "standard"
+    }
+  ],
+  "original_campaign": "/mnt/d/GO2/experi/results/v1_1/20260930T144035.376750Z_2180a5f3",
+  "note": "Same-condition repair collection. Original failed attempts are retained. Startup diagnostics were added for repaired cases; first-sample joint-velocity initialization was corrected for sine Zhou and no-force V1.1. No controller learning equation or disturbance setting changed during these repairs. Historical failed raw data removed at handoff; metadata kept in handoff/cleanup_provenance.json."
+}

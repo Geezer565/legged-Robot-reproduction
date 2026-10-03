@@ -1,0 +1,26 @@
+module:
+  name: payload_id
+  mode: shadow
+  enabled: false
+  update_rate_hz: 100.0
+  input_wrench_order: [Fx, Fy, Fz, Tx, Ty, Tz]
+  estimator:
+    adaptation_gain: [2.0, 2.0, 2.0, 2.0]
+    forgetting_rate: 0.002
+    information_forgetting_rate: 0.02
+    gravity_magnitude: 9.81
+    delta_mass_bounds_kg: [0.0, 8.0]
+    max_abs_delta_com_m: [0.15, 0.15, 0.20]
+    normalization_epsilon: 1.0e-6
+    confidence_information_scale: [20.0, 20.0, 20.0, 20.0]
+    maximum_angular_speed_for_automatic_regressor_rad_s: 1.0
+    mass_epsilon_kg: 1.0e-6
+  gating:
+    require_valid_external_residual: true
+    freeze_during_fast_rotation: true
+    use_custom_regressor_when_available: true
+  output:
+    publish_equivalent_wrench: true
+    publish_model_update: false
+    apply_to_control: false
+
