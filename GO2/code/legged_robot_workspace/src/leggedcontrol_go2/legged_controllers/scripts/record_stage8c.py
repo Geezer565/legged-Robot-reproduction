@@ -50,6 +50,22 @@ class Stage8cRecorder:
         with self._lock:
             self._event = msg.data
 
+    def has_complete_snapshot(self):
+        """Do not write the one startup row before MPC observation arrives.
+
+        Campaign start denotes a running controller, not delivery of its first
+        observation callback to this recorder.  Writing that partial row makes
+        an otherwise valid record fail integrity validation and must not be
+        treated as a physical nonfinite state.
+        """
+        with self._lock:
+            links = self._link_states
+            observation = self._observation
+        if observation is None or len(observation.state.value) < 12 or links is None:
+            return False
+        return all(self._link_index(links.name, link_name) is not None
+                   for link_name in LINK_NAMES)
+
     @staticmethod
     def _link_index(names, link_name):
         suffix = "::" + link_name
@@ -170,6 +186,9 @@ def main():
             elapsed = campaign_elapsed(rospy.get_time(), campaign_start_ros)
             if args.duration > 0.0 and elapsed >= args.duration:
                 break
+            if not recorder.has_complete_snapshot():
+                rate.sleep()
+                continue
             row = recorder.row(campaign_start_ros)
             row_elapsed = float(row[2])
             if last_elapsed is None or row_elapsed != last_elapsed:

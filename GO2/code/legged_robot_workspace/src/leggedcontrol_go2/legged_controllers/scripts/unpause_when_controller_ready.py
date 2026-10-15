@@ -48,12 +48,18 @@ def main():
     diagnostic_readiness = DiagnosticReadinessWindow()
     require_v2_feasible = rospy.get_param("~require_v2_feasible", False)
     require_v11_ready = rospy.get_param("~require_v11_ready", False)
+    require_adaptive_diagnostic = rospy.get_param("~require_adaptive_diagnostic", True)
 
     def observe_diagnostic_arrival(message):
         if require_v11_ready:
             columns = rospy.get_param("/myrbf_v11_columns", [])
             sample = dict(zip(columns, message.data))
-            if (sample.get("learning_enabled") != 1 or sample.get("wbc_status") != 2
+            # Campaign readiness must NOT depend on learning_enabled.
+            # The adaptive law is intentionally allowed to remain disabled
+            # during activation_warmup while the experiment clock is already
+            # running.  We only require a healthy V1.1 WBC solution and a
+            # consistent MPC/WBC snapshot before publishing campaign start.
+            if (sample.get("wbc_status") != 2
                     or sample.get("mpc_snapshot_id") != sample.get("wbc_snapshot_id")):
                 return
         # Start a recorded campaign only after V2 itself has produced a valid
@@ -77,12 +83,14 @@ def main():
         except ValueError as error:
             rospy.logwarn("MyRBF diagnostic readiness reset: %s", error)
 
-    diagnostic_subscriber = rospy.Subscriber(
-        "/myrbf_shadow_diagnostics",
-        Float64MultiArray,
-        observe_diagnostic_arrival,
-        queue_size=1,
-    )
+    diagnostic_subscriber = None
+    if require_adaptive_diagnostic:
+        diagnostic_subscriber = rospy.Subscriber(
+            "/myrbf_shadow_diagnostics",
+            Float64MultiArray,
+            observe_diagnostic_arrival,
+            queue_size=1,
+        )
 
     # spawn_model applies -J positions after its own one-second workaround.
     # Do not load the controller until Gazebo confirms those positions.
@@ -118,7 +126,7 @@ def main():
     request.start_controllers = list(controllers)
     request.strictness = SwitchControllerRequest.STRICT
     request.start_asap = True
-    request.timeout = 5.0
+    request.timeout = 30.0
     if not switch_controller(request).ok:
         raise RuntimeError("Failed to start the Go2 controllers")
 
@@ -126,16 +134,30 @@ def main():
         states = {item.name: item.state for item in list_controllers().controller}
         return states.get("controllers/legged_controller")
 
-    campaign_start = publish_campaign_start_when_running(
-        list_controller_state=controller_state,
-        diagnostic_readiness=diagnostic_readiness,
-        publish_start=lambda value: campaign_start_publisher.publish(Float64(value)),
-        ros_now=rospy.get_time,
-        sleep=time.sleep,
-        is_shutdown=rospy.is_shutdown,
-        timeout_s=30.0,
-        monotonic_now=time.monotonic,
-    )
+    if require_adaptive_diagnostic:
+        campaign_start = publish_campaign_start_when_running(
+            list_controller_state=controller_state,
+            diagnostic_readiness=diagnostic_readiness,
+            publish_start=lambda value: campaign_start_publisher.publish(Float64(value)),
+            ros_now=rospy.get_time,
+            sleep=time.sleep,
+            is_shutdown=rospy.is_shutdown,
+            timeout_s=90.0,
+            monotonic_now=time.monotonic,
+        )
+    else:
+        # Pure MPC has no adaptive publisher by design.  Its campaign start
+        # depends only on controller-manager state, never a diagnostic topic.
+        deadline = time.monotonic() + 90.0
+        campaign_start = None
+        while not rospy.is_shutdown() and time.monotonic() < deadline:
+            if controller_state() == "running":
+                campaign_start = rospy.get_time()
+                campaign_start_publisher.publish(Float64(campaign_start))
+                break
+            time.sleep(0.05)
+        if campaign_start is None:
+            raise RuntimeError("Pure MPC controller did not reach running state before timeout")
     rospy.loginfo(
         "Go2 controller and diagnostics are ready; shared campaign start %.9f published.",
         campaign_start,

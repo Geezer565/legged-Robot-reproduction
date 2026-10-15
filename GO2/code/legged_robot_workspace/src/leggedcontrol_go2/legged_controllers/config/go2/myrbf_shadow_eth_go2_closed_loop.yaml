@@ -1,6 +1,7 @@
-# ETH ACLF-MPC direct-adaptation specialization for the shared Go2 interface.
-# The regressor is Y=I for a six-dimensional matched constant wrench.
-# This method deliberately contains no Gaussian/RBF representation.
+# 6D constant-wrench direct-adaptation comparator; not full Minniti ACLF-MPC.
+# The regressor is Y=I for a six-dimensional matched constant wrench and this
+# comparator deliberately contains no Gaussian/RBF representation.  The
+# comparison_method: eth value below is a legacy internal adapter key only.
 algorithm: v1
 estimator_version: eth_direct
 comparison_method: eth

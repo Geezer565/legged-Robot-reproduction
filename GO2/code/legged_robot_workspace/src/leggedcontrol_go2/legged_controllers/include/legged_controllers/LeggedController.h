@@ -28,6 +28,7 @@
 #include <legged_wbc/WbcBase.h>
 #include <legged_wbc/MyRbfV2Wbc.h>
 #include "legged_controllers/MyRbfV2PolicyBinding.h"
+#include "legged_controllers/EthAdaptivePolicyBinding.h"
 
 #include "legged_controllers/SafetyChecker.h"
 #include "legged_controllers/visualization/LeggedSelfCollisionVisualization.h"
@@ -80,13 +81,46 @@ class LeggedController : public controller_interface::MultiInterfaceController<H
 
   void configureMyRbfV5(ros::NodeHandle& nh);
   void configureMyRbfV11(ros::NodeHandle& nh);
+  void updateEthAdaptiveWbc(const vector_t& stateDesired, const vector_t& inputDesired,
+                            std::size_t mode, scalar_t dt);
   void updateMyRbfV11(const ros::Time& time,double dt,const vector_t& stateDesired,
                       const vector_t& inputDesired,std::size_t mode);
   bool myRbfV11_=false, myRbfV11PredictionValid_=false;
+  bool ethAdaptiveEnabled_ = false;
+  // Stage-1 reference-faithful ETH uses MPC/CLF adaptation only.  Diagnostics
+  // remain live, while the new Go2-specific WBC bridge is explicitly off.
+  bool ethAdaptiveWbcEnabled_ = true;
+  std::string ethAdaptiveSettingsFile_;
+  std::shared_ptr<EthAdaptivePolicyBinding> ethAdaptivePolicyBinding_;
+  std::unique_ptr<realtime_tools::RealtimePublisher<std_msgs::Float64MultiArray>> ethAdaptivePublisher_;
   std::unique_ptr<adaptive::v11::Core> myRbfV11Core_;
   adaptive::v11::Vector6 myRbfV11PreviousVelocity_=adaptive::v11::Vector6::Zero();
   adaptive::v11::Vector6 myRbfV11PreviousRate_=adaptive::v11::Vector6::Zero();
   adaptive::v11::Vector6 myRbfV11PreviousNominalRate_=adaptive::v11::Vector6::Zero();
+
+  // V1.2-A:
+  // disturbance estimate that was ACTUALLY active during
+  // the previous measured interval.
+  adaptive::v11::Vector6
+      myRbfV11PreviousActiveDisturbance_=
+          adaptive::v11::Vector6::Zero();
+
+  // ==========================================================
+  // V1.2-B:
+  // nominal-model residual calibrated from a separate
+  // zero-payload run.
+  //
+  // This is NOT exact Y*pi and does not contain payload truth.
+  //
+  // d_teacher =
+  //     d_reconstructed - d_nominal_dc
+  // ==========================================================
+  bool myRbfV12NominalDcCancellation_=false;
+
+  adaptive::v11::Vector6
+      myRbfV12NominalDcResidual_=
+          adaptive::v11::Vector6::Zero();
+
   adaptive::v11::Matrix6 myRbfV11PreviousG_=adaptive::v11::Matrix6::Identity();
   double myRbfV11PreviousTime_=0;
   std::unique_ptr<realtime_tools::RealtimePublisher<std_msgs::Float64MultiArray>> myRbfV11Publisher_;

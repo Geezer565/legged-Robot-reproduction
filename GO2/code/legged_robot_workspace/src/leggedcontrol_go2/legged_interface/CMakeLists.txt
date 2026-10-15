@@ -7,6 +7,7 @@ find_package(catkin REQUIRED
         COMPONENTS
         roscpp
         ocs2_legged_robot
+        ocs2_legged_robot_adaptive
         ocs2_self_collision
         )
 
@@ -28,6 +29,7 @@ catkin_package(
         CATKIN_DEPENDS
         roscpp
         ocs2_legged_robot
+        ocs2_legged_robot_adaptive
         ocs2_self_collision
         DEPENDS
         pinocchio

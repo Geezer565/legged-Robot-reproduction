@@ -5,7 +5,7 @@
 
 #include <ocs2_core/dynamics/SystemDynamicsBase.h>
 #include <ocs2_legged_robot/dynamics/LeggedRobotDynamicsAD.h>
-#include <ocs2_legged_robot/reference_manager/SwitchedModelReferenceManager.h>
+#include <ocs2_oc/synchronized_module/ReferenceManagerInterface.h>
 
 #include "ocs2_legged_robot_adaptive/adaptive/AdaptiveModelData.h"
 #include "ocs2_legged_robot_adaptive/adaptive/AdaptiveReferenceKinematics.h"
@@ -33,7 +33,7 @@ class AdaptiveLeggedRobotDynamics final : public SystemDynamicsBase {
       const legged_robot::ModelSettings& modelSettings,
       adaptive::AdaptiveClfSettings settings,
       std::shared_ptr<const adaptive::AdaptiveModelData> modelData,
-      const legged_robot::SwitchedModelReferenceManager* referenceManager =
+      const ReferenceManagerInterface* referenceManager =
           nullptr);
 
   AdaptiveLeggedRobotDynamics* clone() const override;
@@ -77,7 +77,7 @@ class AdaptiveLeggedRobotDynamics final : public SystemDynamicsBase {
       adaptive::AdaptiveDynamicsForm::LegacyEstimatedModel;
   scalar_t minimumEstimatedTotalMass_ = 1.0;
   std::shared_ptr<const adaptive::AdaptiveModelData> modelData_;
-  const legged_robot::SwitchedModelReferenceManager* referenceManagerPtr_ =
+  const ReferenceManagerInterface* referenceManagerPtr_ =
       nullptr;
   std::unique_ptr<adaptive::AdaptiveReferenceKinematicsAdapter>
       referenceKinematicsPtr_;

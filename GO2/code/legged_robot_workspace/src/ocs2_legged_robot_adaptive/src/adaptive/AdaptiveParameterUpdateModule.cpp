@@ -182,6 +182,11 @@ void AdaptiveParameterUpdateModule::preSolverRun(scalar_t initTime, scalar_t fin
   diagnostics.encodedReferenceDerivativesEnabled =
       settings_.enableEncodedReferenceDerivatives;
   diagnostics.sigma = sliding.sigma;
+  // 只读诊断：保存同一次 Eq.(8) 更新使用的实际质心状态。
+  diagnostics.actualComPositionWorld =
+      reference.actual.comPositionWorld;
+  diagnostics.actualComVelocityWorld =
+      reference.actual.comVelocityWorld;
   diagnostics.desiredComPositionWorld =
       reference.desired.comPositionWorld;
   diagnostics.desiredOrientationWorldFromBase =

@@ -24,7 +24,7 @@ struct AdaptiveClfDiagnosticsData {
 class AdaptiveClfConstraint final : public StateInputConstraint {
  public:
   AdaptiveClfConstraint(const PinocchioInterface& pinocchioInterface, CentroidalModelInfo info,
-                        const legged_robot::SwitchedModelReferenceManager& referenceManager,
+                        const ReferenceManagerInterface& referenceManager,
                         adaptive::AdaptiveClfSettings settings,
                         std::shared_ptr<const adaptive::AdaptiveModelData> modelData);
   AdaptiveClfConstraint* clone() const override { return new AdaptiveClfConstraint(*this); }

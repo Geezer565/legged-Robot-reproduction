@@ -45,6 +45,10 @@ struct AdaptiveParameterUpdateDiagnostics {
   bool encodedReferenceDerivativesEnabled = false;
   vector6_t sigma = vector6_t::Zero();
   vector3_t desiredComPositionWorld = vector3_t::Zero();
+  // 诊断专用：与 desired 由同一次参考运动学计算得到。
+  // WORLD 坐标系；不影响任何自适应或控制公式。
+  vector3_t actualComPositionWorld = vector3_t::Zero();
+  vector3_t actualComVelocityWorld = vector3_t::Zero();
   quaternion_t desiredOrientationWorldFromBase = quaternion_t::Identity();
   vector3_t desiredComVelocityWorld = vector3_t::Zero();
   vector3_t desiredComAccelerationWorld = vector3_t::Zero();

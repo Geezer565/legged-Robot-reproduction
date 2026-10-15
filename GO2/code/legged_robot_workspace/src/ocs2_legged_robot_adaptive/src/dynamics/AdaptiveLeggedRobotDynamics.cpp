@@ -16,7 +16,7 @@ AdaptiveLeggedRobotDynamics::AdaptiveLeggedRobotDynamics(
     const legged_robot::ModelSettings& modelSettings,
     adaptive::AdaptiveClfSettings settings,
     std::shared_ptr<const adaptive::AdaptiveModelData> modelData,
-    const legged_robot::SwitchedModelReferenceManager* referenceManager)
+    const ReferenceManagerInterface* referenceManager)
     : nominalDynamics_(pinocchioInterface, centroidalModelInfo,
                        modelName + "_adaptive", modelSettings),
       pinocchioInterface_(pinocchioInterface),

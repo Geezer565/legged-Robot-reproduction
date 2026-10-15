@@ -3,7 +3,7 @@
 #include <memory>
 
 #include <ocs2_centroidal_model/CentroidalModelPinocchioMapping.h>
-#include <ocs2_legged_robot/reference_manager/SwitchedModelReferenceManager.h>
+#include <ocs2_oc/synchronized_module/ReferenceManagerInterface.h>
 #include <ocs2_pinocchio_interface/PinocchioInterface.h>
 
 #include "ocs2_legged_robot_adaptive/adaptive/AdaptiveClf.h"
@@ -70,7 +70,7 @@ struct AdaptiveClfDiagnostics {
 class AdaptiveClfEvaluator final {
  public:
   AdaptiveClfEvaluator(const PinocchioInterface& pinocchioInterface, CentroidalModelInfo info,
-                       const legged_robot::SwitchedModelReferenceManager& referenceManager,
+                       const ReferenceManagerInterface& referenceManager,
                        AdaptiveClfSettings settings);
   /** OCS2 会 clone constraint；复制时重建每个 clone 自己的 Pinocchio state。 */
   AdaptiveClfEvaluator(const AdaptiveClfEvaluator& other);
@@ -89,7 +89,7 @@ class AdaptiveClfEvaluator final {
   mutable PinocchioInterface pinocchioInterface_;
   CentroidalModelInfo info_;
   mutable CentroidalModelPinocchioMapping mapping_;
-  const legged_robot::SwitchedModelReferenceManager* referenceManagerPtr_;
+  const ReferenceManagerInterface* referenceManagerPtr_;
   mutable AdaptiveReferenceKinematicsAdapter referenceKinematics_;
   SlidingVariable slidingVariable_;
   AdaptiveRigidBodyRegressor regressor_;

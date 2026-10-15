@@ -11,7 +11,7 @@ namespace legged_robot_adaptive {
 namespace adaptive {
 
 AdaptiveClfEvaluator::AdaptiveClfEvaluator(const PinocchioInterface& pinocchioInterface, CentroidalModelInfo info,
-                                           const legged_robot::SwitchedModelReferenceManager& referenceManager,
+                                           const ReferenceManagerInterface& referenceManager,
                                            AdaptiveClfSettings settings)
     : pinocchioInterface_(pinocchioInterface),
       info_(std::move(info)),

@@ -1,0 +1,270 @@
+{
+  "created": "2026-10-13",
+  "base_commit": "788411184823d7723034321492b3d417f9efffea",
+  "source_archive": "Go2_RBF_source_review_20261013_130135.tar.gz",
+  "source_branch": "rbf-filter-feasibility",
+  "overlay_files": [
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/CMakeLists.txt",
+      "kind": "tracked_modified",
+      "sha256": "3a99cad85b327fdd93bbe84fe9daafc998b05f5af430fe979a98765b64ff2a13",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_shadow_eth_go2_closed_loop.yaml",
+      "kind": "tracked_modified",
+      "sha256": "3ecda8d1d83fd18b00fb257e678ffa75881beabbdbde16a0ac44504391d31ced",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/myrbf_v11_equivalent_wrench_go2.yaml",
+      "kind": "tracked_modified",
+      "sha256": "14d2d7d07f4b1f3fd2e624450de6d671bb170e6b54f9fd3d6943a5a9aaff64b7",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/include/legged_controllers/LeggedController.h",
+      "kind": "tracked_modified",
+      "sha256": "67e128b0b498f69647e43279a563bd5ef5fc3165f5fdedfb426ef43552ec3d68",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/launch/go2_method_comparison.launch",
+      "kind": "tracked_modified",
+      "sha256": "666f8900e5c54f0b4336be88b1af28eb8689daa973605500e520b756e388c031",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/package.xml",
+      "kind": "tracked_modified",
+      "sha256": "3128f8a0b36734e706408e17d2aa7b59aceae7b8b9365a0785b39d22c2973a1d",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/plot_go2_method_comparison.py",
+      "kind": "tracked_modified",
+      "sha256": "ed19832261172b283ab74ad8a772c70189cb48e85fd20252384c884913425e4b",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/record_stage8c.py",
+      "kind": "tracked_modified",
+      "sha256": "8ecaa4b2fa1a206b43e495a3dc8685fa03d76a52060e061c25f7a0fa7c4433dc",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/run_go2_method_comparison.py",
+      "kind": "tracked_modified",
+      "sha256": "c036b4321b483aedc4bcee7a297d427da76c5c4cc5ed7d910ef581ead9141f1f",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/unpause_when_controller_ready.py",
+      "kind": "tracked_modified",
+      "sha256": "c9226ad3f0d2f584ded71fe1ea615558294131d0c1a7e5ea689ae4abe4a72235",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/src/LeggedController.cpp",
+      "kind": "tracked_modified",
+      "sha256": "359ec3bb811cac83964978b85c36039d64fccec6f86c400a8d1a5f855aabca6f",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/src/MyRbfV11Control.cpp",
+      "kind": "tracked_modified",
+      "sha256": "d9b859ccc87b0f7450c05d53fbc39b4bdb5d5a6a817cd805d31dc60dbc8a375d",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_gazebo/src/LeggedHWSim.cpp",
+      "kind": "tracked_modified",
+      "sha256": "17d56f440d59175fad2093f79c7460627984fe33597e8181ba3e0839381140b6",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_interface/CMakeLists.txt",
+      "kind": "tracked_modified",
+      "sha256": "5dbb1d82089ebecdb042243bdecc0dbbc5965f0d3b95895ece220e8ccb9574fe",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_interface/include/legged_interface/LeggedInterface.h",
+      "kind": "tracked_modified",
+      "sha256": "d40cf8adeffe44aa9d2c46179891e28a5cace9851a554dfa90ebe03a92f0f363",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_interface/include/legged_interface/adaptive/MyRbfV11Core.h",
+      "kind": "tracked_modified",
+      "sha256": "8a35c417717300611c6324df8bd178412c30c211a4b288a394bfd698b6dc621a",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_interface/package.xml",
+      "kind": "tracked_modified",
+      "sha256": "6af6531b16c6bd4a91fc4d7ebf4081bdf469245be3e24dd5258ca002b83ece3e",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_interface/src/LeggedInterface.cpp",
+      "kind": "tracked_modified",
+      "sha256": "5ba4c3247e866a22dd51855441c7c4d38144e468c6857f561a37443641a2e71b",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/ocs2_legged_robot_adaptive/include/ocs2_legged_robot_adaptive/adaptive/AdaptiveClfEvaluator.h",
+      "kind": "tracked_modified",
+      "sha256": "0a6bc9ec1eb07591941ed9297bcc7074538644935556d49a407c8a2f4d666ee4",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/ocs2_legged_robot_adaptive/include/ocs2_legged_robot_adaptive/adaptive/AdaptiveParameterUpdateModule.h",
+      "kind": "tracked_modified",
+      "sha256": "5906797ac4b3ddd31cf5afb7c44f2246bd6f8bd77eeaf9a4851d25029814e475",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/ocs2_legged_robot_adaptive/include/ocs2_legged_robot_adaptive/constraint/AdaptiveClfConstraint.h",
+      "kind": "tracked_modified",
+      "sha256": "b24666b384dc353a7af40d8a9c00655969369764f8bc39a34f82877ed2e29329",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/ocs2_legged_robot_adaptive/include/ocs2_legged_robot_adaptive/dynamics/AdaptiveLeggedRobotDynamics.h",
+      "kind": "tracked_modified",
+      "sha256": "69f324a758119309df7eec90f6a3b9e5ac2c47c2bad38c92b88f6058fd8f42fb",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/ocs2_legged_robot_adaptive/src/adaptive/AdaptiveClfEvaluator.cpp",
+      "kind": "tracked_modified",
+      "sha256": "773e49bc22c2dff0917417b5f75e5e24888b49f454220e610ed9b28b3f3a2844",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/ocs2_legged_robot_adaptive/src/adaptive/AdaptiveParameterUpdateModule.cpp",
+      "kind": "tracked_modified",
+      "sha256": "c4575990f5bc19c10e84da22c62e3ebc3b16eba2ffbd501e19429c0890334507",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/ocs2_legged_robot_adaptive/src/constraint/AdaptiveClfConstraint.cpp",
+      "kind": "tracked_modified",
+      "sha256": "fc87c3d740d3f51728cea5b60c2d52c0aa0b6eaf010adc1894ec88b830a352a7",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/ocs2_legged_robot_adaptive/src/dynamics/AdaptiveLeggedRobotDynamics.cpp",
+      "kind": "tracked_modified",
+      "sha256": "aad09c1cb7ed36675e843606800d32c80d32acf6e9a70f27c8d6b63c08c43c7e",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/eth_adaptive_clf_mpc_go2.yaml",
+      "kind": "untracked_new",
+      "sha256": "fbdc94559efb6c49d43e2f214ab5c3e78d4b47752503bfd5a130a2a55bb49814",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/eth_reference_faithful_go2.yaml",
+      "kind": "untracked_new",
+      "sha256": "385a969abeb4f63ad00bf58886f471e8cd66585e805998d101ba96dc37d65bd8",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/pure_mpc_go2.yaml",
+      "kind": "untracked_new",
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/include/legged_controllers/EthAdaptivePolicyBinding.h",
+      "kind": "untracked_new",
+      "sha256": "e75a84230e8a58282cb04daa7f8b14f3eeb5a8faa9172b34cb474d98f22fa74f",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/include/legged_controllers/ExactPayloadTruth.h",
+      "kind": "untracked_new",
+      "sha256": "eff1bf79708c7cb023944d9efeda9e2cf43b693cce927a9c819973ff5aede573",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/analyze_phase15_xforce.py",
+      "kind": "untracked_new",
+      "sha256": "8ebbf448db0e485bbf67be70d0500f7beafdee676664d8d4d61ddbfdbdbdd658",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/apply_payload_mass.py",
+      "kind": "untracked_new",
+      "sha256": "6ee04b1f270135a885e62eda9bddd92a1309a499272ec7437e67780e4149fd27",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/check_myrbf_wrench_contract.py",
+      "kind": "untracked_new",
+      "sha256": "48b5606eef177c85f403063218b959226ad009fdcffc513f4b853994d544a43f",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/make_final_fx_prototype.py",
+      "kind": "untracked_new",
+      "sha256": "de8d3798787d905a23b94b80c9e91c8e5b4ddabd71513525f70a2cbb5a506394",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/make_payload_plant_urdf.py",
+      "kind": "untracked_new",
+      "sha256": "8abe2514394ad6b9a0c0f206ee5c2a3dae1b845a580ef885665671d3ca33c84a",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/make_phase2_advisor_figures.py",
+      "kind": "untracked_new",
+      "sha256": "33c23ad78c5f88a195001e812b0b823a671a89286503126d75041ea07a54ca02",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/scripts/record_gazebo_contacts.py",
+      "kind": "untracked_new",
+      "sha256": "53e2e7db6cd295481bac2a9e67cb446bede37e7dbcf6d16646932b265511296f",
+      "mode": 493
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/src/EthAdaptiveControl.cpp",
+      "kind": "untracked_new",
+      "sha256": "a2043c5e9dc6822a0d61f4a4b628d20ae3e6570bca01a00e9394530e9e27e7c7",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/test/test_myrbf_wrench_contract.py",
+      "kind": "untracked_new",
+      "sha256": "584ff5819997bf4ef712caee87dd654585f470cb437a3baf818094d1bf7557ab",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/src/ocs2_legged_robot_adaptive/config/adaptive_settings_eth_reference_faithful_16d.info",
+      "kind": "untracked_new",
+      "sha256": "8034a7dd285dd04c460df9b822d47c681d57b3457c1b22c14642507348059f55",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/rbf_experiment_configs/myrbf_v12B_fz_bias_gain_050.yaml",
+      "kind": "untracked_new",
+      "sha256": "1e2174b0257950ce7baba4ef0925fa7e86bfe74fee4febf045e30d25d26da77b",
+      "mode": 420
+    },
+    {
+      "path": "GO2/code/legged_robot_workspace/rbf_experiment_configs/myrbf_v12B_fz_bias_gain_080.yaml",
+      "kind": "untracked_new",
+      "sha256": "7635e60c6be6ccc94768e073ac4788071cd40d1d73c2e37ec6e1ddd74b6347a5",
+      "mode": 420
+    }
+  ],
+  "historical_excluded": [
+    "GO2/code/legged_robot_workspace/src/leggedcontrol_go2/legged_controllers/config/go2/phase2_candidate_01_gamma_fy_2x.yaml"
+  ],
+  "static_only": true
+}

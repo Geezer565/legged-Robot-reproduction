@@ -16,6 +16,7 @@
 #include <ocs2_ros_interfaces/common/RosMsgConversions.h>
 #include <ocs2_ros_interfaces/synchronized_module/RosReferenceManager.h>
 #include <ocs2_sqp/SqpMpc.h>
+#include <ros/package.h>
 #include <pinocchio/algorithm/center-of-mass.hpp>
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
@@ -75,6 +76,9 @@ bool LeggedController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHand
   controller_nh.param("enable_myrbf_shadow", enableMyRbfShadow_, false);
   controller_nh.param(
       "enable_myrbf_control_injection", enableMyRbfControlInjection_, false);
+  controller_nh.param("enable_eth_adaptive_clf_mpc", ethAdaptiveEnabled_, false);
+  controller_nh.param("enable_eth_adaptive_wbc_compensation", ethAdaptiveWbcEnabled_, true);
+  controller_nh.param("eth_adaptive_settings_file", ethAdaptiveSettingsFile_, std::string());
   controller_nh.param(
       "myrbf_shadow/algorithm", myRbfAlgorithm_, std::string("v1"));
   controller_nh.param("myrbf_shadow/estimator_version",
@@ -656,6 +660,15 @@ void LeggedController::update(const ros::Time& time, const ros::Duration& period
   vector_t optimizedState, optimizedInput;
   size_t plannedMode = 0;  // The mode that is active at the time the policy is evaluated at.
   mpcMrtInterface_->evaluatePolicy(currentObservation_.time, currentObservation_.state, optimizedState, optimizedInput, plannedMode);
+  if (ethAdaptiveEnabled_) {
+    try {
+      updateEthAdaptiveWbc(optimizedState, optimizedInput, plannedMode, period.toSec());
+    } catch (const std::exception& error) {
+      ROS_ERROR_STREAM("[ETH Adaptive CLF-MPC] WBC bridge failure: " << error.what());
+      stopRequest(time);
+      return;
+    }
+  }
   updateMyRbfShadowObservation(optimizedState, optimizedInput);
   applyMyRbfControlCompensation(optimizedInput, plannedMode, period.toSec());
   queueMyRbfShadowPrediction();
@@ -1155,6 +1168,16 @@ LeggedController::~LeggedController() {
 void LeggedController::setupLeggedInterface(const std::string& taskFile, const std::string& urdfFile, const std::string& referenceFile,
                                             bool verbose) {
   leggedInterface_ = std::make_shared<LeggedInterface>(taskFile, urdfFile, referenceFile);
+  if (ethAdaptiveEnabled_) {
+    if (ethAdaptiveSettingsFile_.empty()) {
+      ethAdaptiveSettingsFile_ = ros::package::getPath("ocs2_legged_robot_adaptive") +
+          "/config/adaptive_settings_eth_paper_full_16d.info";
+    }
+    if (ethAdaptiveSettingsFile_.empty()) {
+      throw std::runtime_error("ETH adaptive settings package path is unavailable");
+    }
+    leggedInterface_->setEthAdaptiveSettingsFile(ethAdaptiveSettingsFile_);
+  }
   myRbfV11_ = myRbfAlgorithm_ == "v11_equivalent_wrench" && enableMyRbfShadow_ && enableMyRbfControlInjection_;
   myRbfV3Teacher_ = myRbfAlgorithm_ == "v3_teacher" && enableMyRbfShadow_ && enableMyRbfControlInjection_;
   myRbfV4Convergence_ = myRbfAlgorithm_ == "v4_convergence" && enableMyRbfShadow_ && enableMyRbfControlInjection_;
@@ -1172,6 +1195,32 @@ void LeggedController::setupLeggedInterface(const std::string& taskFile, const s
     myRbfV2PolicyBinding_ = std::make_shared<MyRbfV2PolicyBinding>(myRbfV2Snapshots_);
   }
   leggedInterface_->setupOptimalControlProblem(taskFile, urdfFile, referenceFile, verbose);
+  if (ethAdaptiveEnabled_) {
+    ethAdaptivePolicyBinding_ = std::make_shared<EthAdaptivePolicyBinding>(
+        leggedInterface_->getEthAdaptiveParameterUpdateModule(),
+        leggedInterface_->getEthAdaptiveModelData());
+    ros::NodeHandle node;
+    node.setParam("/eth_adaptive_columns", std::vector<std::string>{
+        "time", "snapshot_time", "snapshot_version",
+        "pi_hat_m", "pi_hat_hx", "pi_hat_hy", "pi_hat_hz",
+        "pi_hat_jxx", "pi_hat_jxy", "pi_hat_jxz", "pi_hat_jyy", "pi_hat_jyz", "pi_hat_jzz",
+        "pi_hat_fx_base", "pi_hat_fy_base", "pi_hat_fz_base", "pi_hat_tx_base", "pi_hat_ty_base", "pi_hat_tz_base",
+        "estimated_yupi_world_com_fx", "estimated_yupi_world_com_fy", "estimated_yupi_world_com_fz",
+        "estimated_yupi_world_com_tx", "estimated_yupi_world_com_ty", "estimated_yupi_world_com_tz",
+        "physical_external_world_base_fx", "physical_external_world_base_fy", "physical_external_world_base_fz",
+        "physical_external_world_base_tx", "physical_external_world_base_ty", "physical_external_world_base_tz",
+        "true_yupi_world_com_fx", "true_yupi_world_com_fy", "true_yupi_world_com_fz",
+        "true_yupi_world_com_tx", "true_yupi_world_com_ty", "true_yupi_world_com_tz",
+        "diag_valid", "diag_snapshot_time", "diag_observation_time", "diag_snapshot_version",
+        "desired_com_z", "actual_com_z", "desired_com_vz", "actual_com_vz",
+        "sigma_x", "sigma_y", "sigma_z",
+        "reference_accel_x", "reference_accel_y", "reference_accel_z",
+        "mass_raw_drive", "mass_applied_drive", "mass_parameter_derivative",
+        "baseline_correction_applied", "parameter_update_enabled", "encoded_reference_derivatives"});
+    ethAdaptivePublisher_ = std::make_unique<realtime_tools::RealtimePublisher<std_msgs::Float64MultiArray>>(
+        node, "/eth_adaptive_diagnostics", 100);
+    ethAdaptivePublisher_->msg_.data.resize(57);
+  }
   // Freeze the actual nominal model used to convert logged momentum to physical velocity.
   const auto& model=leggedInterface_->getCentroidalModelInfo();
   ros::NodeHandle modelNode;
@@ -1199,6 +1248,7 @@ void LeggedController::setupMpc() {
   auto rosReferenceManagerPtr = std::make_shared<RosReferenceManager>(robotName, leggedInterface_->getReferenceManagerPtr());
   rosReferenceManagerPtr->subscribe(nh);
   mpc_->getSolverPtr()->addSynchronizedModule(gaitReceiverPtr);
+  if (ethAdaptivePolicyBinding_) mpc_->getSolverPtr()->addSynchronizedModule(ethAdaptivePolicyBinding_);
   if (myRbfV2PolicyBinding_) mpc_->getSolverPtr()->addSynchronizedModule(myRbfV2PolicyBinding_);
   mpc_->getSolverPtr()->setReferenceManager(rosReferenceManagerPtr);
   observationPublisher_ = nh.advertise<ocs2_msgs::mpc_observation>(robotName + "_mpc_observation", 1);
@@ -1206,6 +1256,7 @@ void LeggedController::setupMpc() {
 
 void LeggedController::setupMrt() {
   mpcMrtInterface_ = std::make_shared<MPC_MRT_Interface>(*mpc_);
+  if (ethAdaptivePolicyBinding_) mpcMrtInterface_->addMrtObserver(ethAdaptivePolicyBinding_);
   if (myRbfV2PolicyBinding_) mpcMrtInterface_->addMrtObserver(myRbfV2PolicyBinding_);
   mpcMrtInterface_->initRollout(&leggedInterface_->getRollout());
   mpcTimer_.reset();

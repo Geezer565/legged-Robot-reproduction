@@ -16,6 +16,7 @@ find_package(catkin REQUIRED
         geometry_msgs
         ocs2_msgs
         ocs2_legged_robot_ros
+        ocs2_legged_robot_adaptive
         ocs2_self_collision_visualization
         angles
         realtime_tools
@@ -43,6 +44,7 @@ catkin_package(
         geometry_msgs
         ocs2_msgs
         ocs2_legged_robot_ros
+        ocs2_legged_robot_adaptive
         ocs2_self_collision_visualization
         angles
         realtime_tools
@@ -69,6 +71,7 @@ add_library(${PROJECT_NAME}
         src/MyRbfV2Control.cpp
         src/MyRbfV5Control.cpp
         src/MyRbfV11Control.cpp
+        src/EthAdaptiveControl.cpp
         )
 
 target_link_libraries(${PROJECT_NAME}
@@ -104,6 +107,7 @@ catkin_install_python(PROGRAMS
         scripts/record_tp01_target.py
         scripts/record_stage8c.py
         scripts/unpause_when_controller_ready.py
+        scripts/check_myrbf_wrench_contract.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
         )
 
@@ -120,6 +124,7 @@ if (CATKIN_ENABLE_TESTING)
     catkin_add_nosetests(test/test_tp01_trajectory.py)
     catkin_add_nosetests(test/test_myrbf_motion_profile.py)
     catkin_add_nosetests(test/test_myrbf_campaign_timing.py)
+    catkin_add_nosetests(test/test_myrbf_wrench_contract.py)
 endif ()
 
 #########################

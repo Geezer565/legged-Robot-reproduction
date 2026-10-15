@@ -6,7 +6,7 @@ namespace ocs2 {
 namespace legged_robot_adaptive {
 
 AdaptiveClfConstraint::AdaptiveClfConstraint(const PinocchioInterface& pinocchioInterface, CentroidalModelInfo info,
-                                             const legged_robot::SwitchedModelReferenceManager& referenceManager,
+                                             const ReferenceManagerInterface& referenceManager,
                                              adaptive::AdaptiveClfSettings settings,
                                              std::shared_ptr<const adaptive::AdaptiveModelData> modelData)
     : StateInputConstraint(ConstraintOrder::Linear),

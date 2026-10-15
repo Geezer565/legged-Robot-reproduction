@@ -23,6 +23,12 @@
 
 #include "legged_interface/SwitchedModelReferenceManager.h"
 #include "legged_interface/adaptive/MyRbfV2Snapshot.h"
+#include <ocs2_legged_robot_adaptive/adaptive/AdaptiveTypes.h>
+
+namespace ocs2 { namespace legged_robot_adaptive { namespace adaptive {
+class AdaptiveModelData;
+class AdaptiveParameterUpdateModule;
+}}}
 
 namespace legged {
 using namespace ocs2;
@@ -35,6 +41,15 @@ class LeggedInterface : public RobotInterface {
 
   ~LeggedInterface() override = default;
   void setMyRbfV2Snapshots(std::shared_ptr<adaptive::MyRbfV2SnapshotStore> store) { myRbfV2Snapshots_ = std::move(store); }
+  /** Enable the unchanged Minniti/ETH 16D implementation for this interface. */
+  void setEthAdaptiveSettingsFile(std::string filename) { ethAdaptiveSettingsFile_ = std::move(filename); }
+  bool ethAdaptiveEnabled() const { return !ethAdaptiveSettingsFile_.empty(); }
+  std::shared_ptr<ocs2::legged_robot_adaptive::adaptive::AdaptiveModelData>
+  getEthAdaptiveModelData() const { return ethModelDataPtr_; }
+  std::shared_ptr<ocs2::legged_robot_adaptive::adaptive::AdaptiveParameterUpdateModule>
+  getEthAdaptiveParameterUpdateModule() const { return ethParameterUpdateModulePtr_; }
+  const ocs2::legged_robot_adaptive::adaptive::AdaptiveClfSettings&
+  getEthAdaptiveSettings() const;
 
   virtual void setupOptimalControlProblem(const std::string& taskFile, const std::string& urdfFile, const std::string& referenceFile,
                                           bool verbose);
@@ -83,6 +98,10 @@ class LeggedInterface : public RobotInterface {
 
   ModelSettings modelSettings_;
   std::shared_ptr<adaptive::MyRbfV2SnapshotStore> myRbfV2Snapshots_;
+  std::string ethAdaptiveSettingsFile_;
+  std::shared_ptr<ocs2::legged_robot_adaptive::adaptive::AdaptiveModelData> ethModelDataPtr_;
+  std::shared_ptr<ocs2::legged_robot_adaptive::adaptive::AdaptiveParameterUpdateModule> ethParameterUpdateModulePtr_;
+  std::unique_ptr<ocs2::legged_robot_adaptive::adaptive::AdaptiveClfSettings> ethAdaptiveSettings_;
   mpc::Settings mpcSettings_;
   ddp::Settings ddpSettings_;
   sqp::Settings sqpSettings_;

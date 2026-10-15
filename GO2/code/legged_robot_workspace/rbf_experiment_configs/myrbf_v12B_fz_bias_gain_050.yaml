@@ -1,0 +1,170 @@
+algorithm: v11_equivalent_wrench
+representation: six_independent_scalar_gaussian_rbf_25_plus_bias
+learning_target: equivalent_uncertainty_wrench_body_com_left_hand
+control_interface: model_and_wbc
+estimator_version: legacy
+update_period: 0.001
+time_tolerance: 0.003
+activation_warmup: 5.0
+v11_composite_ratio: 0.8
+v11_enable_torque_coupled_feature: false
+v11_torque_feature_angular_ratio: 0.3
+v11_input_scale:
+- 0.02
+- 0.02
+- 0.02
+- 0.05
+- 0.05
+- 0.05
+v11_gradient_filter_tau:
+- 0.05
+- 0.05
+- 0.05
+- 0.05
+- 0.05
+- 0.05
+v11_gradient_deadzone:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+v11_gamma:
+- 684.664347
+- 684.664347
+- 684.664347
+- 0.0964173546
+- 0.737557149
+- 0.773874342
+v11_leakage:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+v11_weight_limit:
+- 20
+- 20
+- 20
+- 3
+- 3
+- 3
+v11_clf_decay:
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+- 0.2
+v11_centers:
+- -1
+- -0.9166666666666666
+- -0.8333333333333333
+- -0.75
+- -0.6666666666666666
+- -0.5833333333333333
+- -0.5
+- -0.4166666666666667
+- -0.3333333333333333
+- -0.25
+- -0.1666666666666667
+- -0.0833333333333333
+- 0
+- 0.0833333333333333
+- 0.1666666666666667
+- 0.25
+- 0.3333333333333333
+- 0.4166666666666667
+- 0.5
+- 0.5833333333333333
+- 0.6666666666666666
+- 0.75
+- 0.8333333333333333
+- 0.9166666666666666
+- 1
+v11_widths:
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+- 0.16
+
+
+# ============================================================
+# V1.2-A: dynamics-residual supervised RBF
+# ============================================================
+
+v12_enable_dynamics_residual: true
+
+# LPF for reconstructed BODY/CoM equivalent uncertainty.
+v12_dynamics_residual_filter_tau:
+- 0.50
+- 0.50
+- 0.50
+- 0.30
+- 0.30
+- 0.30
+
+# Bias-only dynamics supervision:
+#
+# wdot_bias += -k_d * e_d
+#
+# Fz receives the strongest payload-learning channel.
+v12_dynamics_bias_gain:
+- 0.05
+- 0.05
+- 0.50
+- 0.05
+- 0.10
+- 0.05
+
+# Separate projection limit for the constant bias feature.
+v12_bias_weight_limit:
+- 40.0
+- 40.0
+- 70.0
+- 10.0
+- 10.0
+- 10.0
+
+
+# V1.2-B nominal DC residual cancellation
+#
+# Generated from separate 0-kg calibration:
+# /home/han/team_repos/legged-Robot-reproduction/GO2/experi/results/v12_nominal_residual_calibration/20261006T074903.111838Z_c26011d2/no_force__flat_velocity_fy_none__v11_equivalent_wrench_standard__r001/v11_equivalent_wrench.csv
+#
+# No exact Y*pi / payload truth is used online.
+#
+v12_enable_nominal_dc_cancellation: true
+
+# BODY / nominal CoM / left-hand
+# [Fx,Fy,Fz,Tx,Ty,Tz]
+v12_nominal_dc_residual:
+- -1.05418263700267
+- 0.80738610392791
+- 7.23600116141266
+- -0.0103322119562094
+- -0.0371705890384023
+- -0.0126735631891554

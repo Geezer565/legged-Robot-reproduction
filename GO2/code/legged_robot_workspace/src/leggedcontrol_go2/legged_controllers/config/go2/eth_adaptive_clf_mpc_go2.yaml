@@ -1,0 +1,9 @@
+# Faithful paper-style 16D Minniti adaptive branch.  Mathematics and gains are
+# loaded verbatim from ocs2_legged_robot_adaptive/config/adaptive_settings_eth_paper_full_16d.info.
+algorithm: eth_adaptive_clf_mpc
+representation: payload_inertial_10d_plus_wrench_6d
+adaptive_settings: adaptive_settings_eth_paper_full_16d.info
+update: gamma_yu_transpose_sigma
+adaptive_dynamics: paper_regressor_compensation
+adaptive_clf: soft_relaxed_barrier
+wbc_compensation: physical_external_world_wrench_about_base_origin

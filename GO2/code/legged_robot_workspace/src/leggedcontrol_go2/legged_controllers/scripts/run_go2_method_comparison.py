@@ -31,9 +31,19 @@ WORKSPACE_EXPERIMENT_ROOT = next(
 DEFAULT_EXPERIMENT_ROOT = Path(os.environ.get(
     "GO2_EXPERIMENT_ROOT", str(WORKSPACE_EXPERIMENT_ROOT)))
 DEFAULT_OUTPUT_ROOT = DEFAULT_EXPERIMENT_ROOT / "results/v1_1"
-METHODS = ("v11_equivalent_wrench", "eth", "liu_van_mpc_port", "zhou_ssi")
+METHODS = ("pure_mpc", "eth_adaptive_clf_mpc", "eth_reference_faithful", "v11_equivalent_wrench", "direct_wrench", "liu_van_mpc_port", "zhou_ssi")
+# `eth` is retained only as a command-line compatibility alias.  New manifests
+# always use the technically accurate direct_wrench method identity.
+LEGACY_METHOD_ALIASES = {"eth": "direct_wrench"}
 ADAPTIVE_METHODS = ("v5_residual_dynamics", "v6_variable_gain")
 METHOD_DEFINITIONS = {
+    "pure_mpc": {
+        "public_name": "Pure MPC",
+        "representation": "none",
+        "fidelity": "nominal_mpc_nominal_wbc_no_adaptive_architecture",
+        "update": "none",
+        "adaptive_components": "disabled",
+    },
     "v11_equivalent_wrench": {
         "public_name": "MyRBF V1.1",
         "representation": "six_independent_scalar_gaussian_rbf_25_plus_bias",
@@ -41,6 +51,20 @@ METHOD_DEFINITIONS = {
         "clf_mode": "soft_squared_hinge",
         "clf_penalty_weight": 0.01,
         "update": "negative_gamma_h_G_transpose_composite_velocity_error",
+    },
+    "eth_adaptive_clf_mpc": {
+        "public_name": "ETH Adaptive CLF-MPC",
+        "representation": "payload_inertial_10d_plus_wrench_6d",
+        "fidelity": "repository_paper_regressor_16d_with_eq8_eq10_eq11",
+        "clf_mode": "soft_relaxed_barrier",
+        "update": "gamma_yu_transpose_sigma",
+    },
+    "eth_reference_faithful": {
+        "public_name": "ETH Adaptive CLF-MPC (reference-faithful Stage 1)",
+        "representation": "payload_inertial_10d_plus_wrench_6d",
+        "fidelity": "ocs2_ws_reference_legacy_estimated_srbd_yin_i6_no_wbc_bridge",
+        "clf_mode": "soft_relaxed_barrier",
+        "update": "gamma_yu_transpose_sigma",
     },
     "v5_residual_dynamics": {
         "public_name": "MyRBF V5",
@@ -60,10 +84,10 @@ METHOD_DEFINITIONS = {
         "fidelity": "empirical_convergence_without_stability_claim",
         "update": "normalized_residual_prediction_with_forgetting",
     },
-    "eth": {
-        "public_name": "ETH",
+    "direct_wrench": {
+        "public_name": "Direct Wrench",
         "representation": "direct_parameter",
-        "fidelity": "constant_wrench_specialization",
+        "fidelity": "6D constant-wrench direct adaptation comparator; not full Minniti ACLF-MPC",
         "update": "identity_regressor_tracking_adaptation",
     },
     "liu_van_mpc_port": {
@@ -81,7 +105,7 @@ METHOD_DEFINITIONS = {
 }
 MAIN_PROFILES = ("constant", "sine", "multisine")
 PROFILES = ("none",) + MAIN_PROFILES
-STUDIES = ("main", "full", "suite", "no_force", "torque")
+STUDIES = ("main", "full", "suite", "no_force", "torque", "advisor_force")
 TRAJECTORIES = {
     "velocity": {"name": "constant_body_forward_velocity", "profiles": MAIN_PROFILES},
 }
@@ -107,7 +131,7 @@ def sha256(path):
 
 
 def profile_settings(profile, scale=1.0, axis="fy", amplitude_override=None):
-    if profile not in PROFILES or axis not in ("fy", "tx") or not math.isfinite(scale) or scale < 0:
+    if profile not in PROFILES or axis not in ("fx", "fy", "tx") or not math.isfinite(scale) or scale < 0:
         raise ValueError("unknown force profile or invalid scale")
     if amplitude_override is not None and (profile != "sine" or axis != "tx" or
             not math.isfinite(amplitude_override) or amplitude_override <= 0):
@@ -151,13 +175,19 @@ def run_matrix(args):
                 trajectory = TRAJECTORIES[trajectory_id]
                 if study == "main":
                     profiles = trajectory["profiles"] if args.profile == "all" else (args.profile,)
-                    methods = METHODS if args.method == "all" else (args.method,)
+                    methods = METHODS if args.method == "all" else (LEGACY_METHOD_ALIASES.get(args.method, args.method),)
                     variants = [(method, "full" if method in ADAPTIVE_METHODS else "standard")
                                 for method in methods]
                 elif study == "no_force":
                     profiles = ("none",)
                     variants = [(method, "full" if method in ADAPTIVE_METHODS else "standard")
-                                for method in (METHODS if args.method == "all" else (args.method,))]
+                                for method in (METHODS if args.method == "all" else (LEGACY_METHOD_ALIASES.get(args.method, args.method),))]
+                elif study == "advisor_force":
+                    # Advisor generalization protocol: a fixed world-frame
+                    # horizontal 20 N force, applied from t=6 s to experiment end.
+                    profiles = ("constant",)
+                    variants = [(method, "full" if method in ADAPTIVE_METHODS else "standard")
+                                for method in (METHODS if args.method == "all" else (LEGACY_METHOD_ALIASES.get(args.method, args.method),))]
                 elif study == "ablation":
                     if trajectory_id != "velocity":
                         continue
@@ -174,14 +204,30 @@ def run_matrix(args):
                         continue
                     for method, variant in variants:
                         mode = args.robust_mode if method in ADAPTIVE_METHODS else "none"
-                        disturbance = profile_settings(
-                            profile, args.force_scale,
-                            axis="tx" if study == "torque" else "fy",
-                            amplitude_override=args.torque_amplitude if study == "torque" else None)
+                        if study == "advisor_force":
+                            disturbance = profile_settings(
+                                "constant", 1.0, axis=args.advisor_axis)
+                            disturbance["value"] = -10.0
+                            disturbance["amplitude"] = 0.0
+                            disturbance["delay_s"] = 6.0
+                        else:
+                            disturbance = profile_settings(
+                                profile, args.force_scale,
+                                axis="tx" if study == "torque" else "fy",
+                                amplitude_override=args.torque_amplitude if study == "torque" else None)
+
                         total_duration = args.duration
                         move_duration = total_duration - args.motion_delay
                         terminal_hold = 0.0
-                        disturbance["duration_s"] = total_duration
+
+                        # 外力从 delay_s 开始，并恰好持续到记录结束。
+                        disturbance["duration_s"] = (
+                            total_duration - disturbance["delay_s"]
+                        )
+                        if disturbance["duration_s"] <= 0:
+                            raise ValueError(
+                                "experiment must end after disturbance onset"
+                            )
                         method_definition = dict(METHOD_DEFINITIONS[method])
                         if method == "v11_equivalent_wrench":
                             block = re.search(r"v11Feasibility\s*\{([^}]+)\}",
@@ -194,6 +240,8 @@ def run_matrix(args):
                             "schema_version": 2, "experiment": "GO2-METHOD-COMPARISON",
                             "study": study, "variant": variant,
                             "method": method, "method_definition": method_definition,
+                            "legacy_method_alias": (
+                                args.method if args.method in LEGACY_METHOD_ALIASES else None),
                             "robust_mode": mode, "repetition": args.repetition_start,
                             "seed": args.seed, "terrain": terrain,
                             "terrain_conditions": TERRAINS[terrain],
@@ -225,8 +273,12 @@ def run_matrix(args):
                                 "gait_lead_s": 0.6 if terrain == "flat" else 0.0,
                                 "linear_velocity_target": "world_normalized_momentum_first3" if terrain == "flat" else None},
                             "force_estimate_convention": (
+                                "none; pure nominal MPC/WBC has no adaptive wrench"
+                                if method == "pure_mpc" else
                                 "body_equivalent_uncertainty_about_com_left_hand"
                                 if method == "v11_equivalent_wrench" else
+                                "world_yupi_about_com_with_physical_wbc_translation_to_base_origin"
+                                if method == "eth_adaptive_clf_mpc" else
                                 "world_compensation_wrench_about_base_origin"),
                             "data_kind": "simulation", "status": "planned"})
     return rows
@@ -247,11 +299,16 @@ def command_for(case, case_dir, config_path):
                            ("myrbf_flat_control.world" if case["terrain"] == "flat"
                             else "myrbf_multi_terrain.world")),
               "wrench_rate": d["rate_hz"], "wrench_hold": d["command_hold_s"],
-              "wrench_axis": d["axis"]}
+              "wrench_axis": d["axis"],
+              "wrench_delay": d["delay_s"],
+              "wrench_duration": d["duration_s"]}
     for key in ("profile", "value", "amplitude", "frequency", "secondary_amplitude",
                 "secondary_frequency", "phase_deg", "secondary_phase_deg"):
         values["wrench_" + key] = d[key]
-    return ["roslaunch", "legged_controllers", "go2_method_comparison.launch"] + [
+    # Invoke the repository launch file by absolute path.  This avoids an
+    # ambiguous duplicate discovery when the bind-mounted workspace is also
+    # present in ROS_PACKAGE_PATH; nested $(find ...) remain package-resolved.
+    return ["roslaunch", str(ROOT / "legged_controllers/launch/go2_method_comparison.launch")] + [
         "%s:=%s" % (k, v) for k, v in values.items()]
 
 
@@ -262,7 +319,26 @@ def frozen_config(source, method, robust_mode):
     config = yaml.safe_load(Path(source).read_text(encoding="utf-8"))
     if not isinstance(config, dict):
         raise ValueError("controller config must be a YAML mapping")
-    if method == "v11_equivalent_wrench":
+    if method == "pure_mpc":
+        if config:
+            raise ValueError("pure_mpc config must not load adaptive parameters")
+    elif method == "eth_adaptive_clf_mpc":
+        expected = ("eth_adaptive_clf_mpc", "payload_inertial_10d_plus_wrench_6d",
+                    "paper_regressor_compensation", "soft_relaxed_barrier")
+        actual = (config.get("algorithm"), config.get("representation"),
+                  config.get("adaptive_dynamics"), config.get("adaptive_clf"))
+        if actual != expected:
+            raise ValueError("ETH config must select the repository 16D paper implementation")
+    elif method == "eth_reference_faithful":
+        expected = ("eth_reference_faithful", "payload_inertial_10d_plus_wrench_6d",
+                    "reference_legacy_estimated_srbd_rebuild", "[Y_in, I_6]",
+                    "soft_relaxed_barrier", "disabled_stage1")
+        actual = (config.get("algorithm"), config.get("representation"),
+                  config.get("adaptive_dynamics"), config.get("regressor"),
+                  config.get("adaptive_clf"), config.get("wbc_compensation"))
+        if actual != expected:
+            raise ValueError("reference-faithful ETH config must preserve legacy Y=[Y_in,I6], estimated-SRBD dynamics, and no WBC bridge")
+    elif method == "v11_equivalent_wrench":
         if (config.get("algorithm") != method or
                 config.get("learning_target") != "equivalent_uncertainty_wrench_body_com_left_hand" or
                 config.get("control_interface") != "model_and_wbc"):
@@ -355,17 +431,17 @@ def frozen_config(source, method, robust_mode):
         if robust_mode not in ("sign", "smooth"):
             raise ValueError("v4 robust mode must be sign or smooth")
         config["robust_mode"] = robust_mode
-    elif method == "eth":
+    elif method == "direct_wrench":
         if config.get("algorithm") != "v1":
-            raise ValueError("ETH specialization requires the shared V1-compatible adapter")
+            raise ValueError("direct-wrench comparator requires the shared V1-compatible adapter")
         if (config.get("estimator_version"), config.get("comparison_method"),
                 config.get("representation")) != (
                     "eth_direct", "eth", "direct_parameter"):
-            raise ValueError("ETH must use direct adaptation with no RBF representation")
+            raise ValueError("direct-wrench comparator must use direct adaptation with no RBF representation")
         forbidden = {"linear_extent", "angular_extent", "width_ratio",
                      "tracking_gain", "prediction_gain", "leakage"}
         if forbidden.intersection(config):
-            raise ValueError("ETH config contains RBF-only or legacy update parameters")
+            raise ValueError("direct-wrench config contains RBF-only or legacy update parameters")
     elif method in ("liu_van_mpc_port", "zhou_ssi"):
         if config.get("algorithm", "v1") != "v1":
             raise ValueError(method + " requires the V1-compatible comparison interface")
@@ -383,8 +459,11 @@ def frozen_config(source, method, robust_mode):
 
 
 def config_source_for_case(args, case):
-    return {"v11_equivalent_wrench": args.v11_config,
-            "eth": args.eth_config,
+    return {"pure_mpc": args.pure_mpc_config,
+            "eth_adaptive_clf_mpc": args.eth_config,
+            "eth_reference_faithful": args.eth_reference_config,
+            "v11_equivalent_wrench": args.v11_config,
+            "direct_wrench": args.direct_wrench_config,
             "liu_van_mpc_port": args.liu_config,
             "zhou_ssi": args.zhou_config}[case["method"]]
 
@@ -396,6 +475,45 @@ def isolation_environment(case_dir, ros_port, gazebo_port):
     # rosgraph's fallback scans every ROS package before opening the master
     # socket. On the Windows-mounted workspace this can exceed startup time.
     env.setdefault("ROS_PYTHON_LOG_CONFIG_FILE", "/opt/ros/noetic/etc/ros/python_logging.conf")
+    # Do not inherit a mixed overlay from the caller.  roslaunch launches
+    # xacro/rosout as children, which must see the same package roots and
+    # Python modules as the parent runner.
+    ros_root = Path("/opt/ros/noetic")
+    workspace_src = ROOT.parent
+    ros_share = ros_root / "share"
+    ros_lib_python = ros_root / "lib/python3/dist-packages"
+    # A source-space package exports the Gazebo hardware plugin XML, but its
+    # compiled .so lives in an overlay.  A caller may provide an installed
+    # *matching* overlay through this narrowly scoped environment variable.
+    # It is intentionally optional: controller selection and all experiment
+    # settings remain entirely in the frozen case configuration.
+    gazebo_plugin_prefix = Path(env.get("GO2_GAZEBO_PLUGIN_PREFIX", ""))
+    has_gazebo_plugin_prefix = (
+        gazebo_plugin_prefix.is_dir()
+        and (gazebo_plugin_prefix / "share/legged_gazebo/legged_hw_sim_plugins.xml").is_file()
+        and (gazebo_plugin_prefix / "lib/liblegged_hw_sim.so").is_file())
+    env["PATH"] = os.pathsep.join((str(ros_root / "bin"), env.get("PATH", "")))
+    env["ROS_ROOT"] = str(ros_share / "ros")
+    ros_package_roots = [str(workspace_src), str(ros_share)]
+    if has_gazebo_plugin_prefix:
+        ros_package_roots.insert(0, str(gazebo_plugin_prefix / "share"))
+        env["GAZEBO_PLUGIN_PATH"] = os.pathsep.join(
+            (str(gazebo_plugin_prefix / "lib"), env.get("GAZEBO_PLUGIN_PATH", "")))
+        env["LD_LIBRARY_PATH"] = os.pathsep.join(
+            (str(gazebo_plugin_prefix / "lib"), env.get("LD_LIBRARY_PATH", "")))
+    env["ROS_PACKAGE_PATH"] = os.pathsep.join(ros_package_roots)
+    # The ad-hoc Go2/ETH overlays predate the system Noetic prefix and their
+    # setup scripts may omit it.  rospack can still resolve package.xml from
+    # ROS_PACKAGE_PATH in that state, but roslaunch cannot resolve installed
+    # node executables (notably rosout and rosbag) below /opt/ros/noetic/lib.
+    # Keep the system prefix in every child process; this is environment
+    # plumbing only and does not select or alter a controller implementation.
+    prefixes = [path for path in env.get("CMAKE_PREFIX_PATH", "").split(os.pathsep) if path]
+    if str(ros_root) not in prefixes:
+        prefixes.append(str(ros_root))
+    env["CMAKE_PREFIX_PATH"] = os.pathsep.join(prefixes)
+    env["PYTHONPATH"] = os.pathsep.join(
+        path for path in (str(ros_lib_python), env.get("PYTHONPATH", "")) if path)
     env.update(ROS_MASTER_URI="http://127.0.0.1:%d" % ros_port,
                GAZEBO_MASTER_URI="http://127.0.0.1:%d" % gazebo_port,
                ROS_IP="127.0.0.1", ROS_HOSTNAME="127.0.0.1",
@@ -742,7 +860,7 @@ def parse_args(argv=None):
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--execute", action="store_true")
     mode.add_argument("--plan", "--dry-run", action="store_true")
-    p.add_argument("--method", choices=("all",) + METHODS, default="all")
+    p.add_argument("--method", choices=("all",) + METHODS + tuple(LEGACY_METHOD_ALIASES), default="all")
     p.add_argument("--study", choices=STUDIES, default="main",
                    help="full/suite=16 flat constant-velocity conditions; no planned paths")
     p.add_argument("--robust-mode", choices=("sign", "smooth"), default="smooth")
@@ -756,12 +874,18 @@ def parse_args(argv=None):
     p.add_argument("--motion-delay", type=float, default=3.0)
     p.add_argument("--vx", type=float, default=0.45, help="constant forward BODY velocity in m/s")
     p.add_argument("--force-scale", type=float, default=1.0)
+    p.add_argument("--advisor-axis", choices=("fx", "fy"), default="fx",
+                   help="world-force axis for the fixed 20 N advisor protocol")
     p.add_argument("--torque-amplitude", type=float,
                    help="required positive Nm amplitude for the optional Tx sine study")
     p.add_argument("--wall-timeout", type=float, default=300.0)
     p.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     p.add_argument("--v11-config", type=Path, default=CONFIG_DIR / "myrbf_v11_equivalent_wrench_go2.yaml")
-    p.add_argument("--eth-config", type=Path, default=CONFIG_DIR / "myrbf_shadow_eth_go2_closed_loop.yaml")
+    p.add_argument("--pure-mpc-config", type=Path, default=CONFIG_DIR / "pure_mpc_go2.yaml")
+    p.add_argument("--eth-config", type=Path, default=CONFIG_DIR / "eth_adaptive_clf_mpc_go2.yaml")
+    p.add_argument("--eth-reference-config", type=Path, default=CONFIG_DIR / "eth_reference_faithful_go2.yaml")
+    p.add_argument("--direct-wrench-config", dest="direct_wrench_config", type=Path,
+                   default=CONFIG_DIR / "myrbf_shadow_eth_go2_closed_loop.yaml")
     p.add_argument("--liu-config", type=Path, default=CONFIG_DIR / "myrbf_shadow_liu_hybrid_go2.yaml")
     p.add_argument("--zhou-config", type=Path, default=CONFIG_DIR / "myrbf_shadow_zhou_ssi_rff_go2.yaml")
     p.add_argument("--gui", action="store_true")
@@ -775,9 +899,12 @@ def parse_args(argv=None):
         p.error("each experiment condition must run exactly once")
     if args.study == "suite" and args.trajectory != "all":
         p.error("suite runs all experiments; use a single-experiment entry to select a trajectory")
-    if args.study not in ("main", "no_force") and (args.terrain != "flat" or args.method != "all" or
-                                  args.profile != "all"):
+    if args.study not in ("main", "no_force", "advisor_force") and (
+            args.terrain != "flat" or args.method != "all" or args.profile != "all"):
         p.error("added studies require --terrain flat --method all --profile all")
+    if args.study == "advisor_force" and (
+            args.terrain != "flat" or args.profile != "all"):
+        p.error("advisor_force requires flat terrain and its fixed constant-force profile")
     if args.study == "no_force" and args.profile != "all":
         p.error("no-force study selects profile none; omit --profile")
     if args.study == "torque":

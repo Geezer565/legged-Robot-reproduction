@@ -1,0 +1,7 @@
+algorithm: eth_reference_faithful
+representation: payload_inertial_10d_plus_wrench_6d
+adaptive_settings: adaptive_settings_eth_reference_faithful_16d.info
+adaptive_dynamics: reference_legacy_estimated_srbd_rebuild
+regressor: "[Y_in, I_6]"
+adaptive_clf: soft_relaxed_barrier
+wbc_compensation: disabled_stage1

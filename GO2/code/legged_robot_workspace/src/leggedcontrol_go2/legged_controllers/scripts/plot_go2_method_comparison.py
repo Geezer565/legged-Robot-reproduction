@@ -39,16 +39,16 @@ WRENCH_DISPLAY_RATE_HZ = 20.0
 COLORS = {"v3_teacher": "#0072B2", "v4_convergence": "#000000",
           "v11_equivalent_wrench": "#0072B2",
           "v5_residual_dynamics": "#009E73", "v6_variable_gain": "#0072B2",
-          "eth": "#E69F00", "liu_van_mpc_port": "#D55E00",
+          "pure_mpc": "#666666", "direct_wrench": "#E69F00", "eth": "#E69F00", "liu_van_mpc_port": "#D55E00",
           "zhou_ssi": "#CC79A7"}
 LINESTYLES = {"v3_teacher": "-", "v4_convergence": "-",
              "v11_equivalent_wrench": "-",
-               "v5_residual_dynamics": "-", "v6_variable_gain": "-", "eth": "--",
+               "v5_residual_dynamics": "-", "v6_variable_gain": "-", "pure_mpc": "-", "direct_wrench": "--", "eth": "--",
               "liu_van_mpc_port": "-.", "zhou_ssi": ":"}
 METHOD_LABELS = {"v3_teacher": "MyRBF V3 (archived)", "v4_convergence": "MyRBF V4",
                  "v11_equivalent_wrench": "MyRBF V1.1",
                   "v5_residual_dynamics": "MyRBF V5", "v6_variable_gain": "MyRBF V6",
-                 "eth": "ETH", "liu_van_mpc_port": "Liu-VAN",
+                 "pure_mpc": "Pure MPC", "direct_wrench": "Direct Wrench (6D)", "eth": "Direct Wrench (legacy ETH alias)", "liu_van_mpc_port": "Liu-VAN",
                  "zhou_ssi": "Zhou-RFF"}
 DIAGNOSTIC_REQUIRED = ("clf_lhs", "clf_rhs", "clf_violation", "clf_feasible",
                        "mpc_snapshot_id", "wbc_snapshot_id", "hold_mismatch_power", "robust_mode",
@@ -96,14 +96,33 @@ def numbers(rows, field):
 
 
 def expected_force(d, elapsed):
+    delay = float(d.get("delay_s", 0.0))
+    duration = float(d["duration_s"])
+
     if d["profile"] == "none":
         return 0.0
+
+    # 扰动尚未开始，或者已经超过指定持续时间。
+    if elapsed < delay or elapsed >= delay + duration:
+        return 0.0
+
+    active_time = elapsed - delay
+
     if d["profile"] == "constant":
         return d["value"]
-    primary = d["amplitude"] * math.sin(2 * math.pi * d["frequency"] * elapsed + math.radians(d["phase_deg"]))
+
+    primary = d["amplitude"] * math.sin(
+        2 * math.pi * d["frequency"] * active_time
+        + math.radians(d["phase_deg"])
+    )
+
     secondary = 0.0
     if d["profile"] == "multisine":
-        secondary = d["secondary_amplitude"] * math.sin(2 * math.pi * d["secondary_frequency"] * elapsed + math.radians(d["secondary_phase_deg"]))
+        secondary = d["secondary_amplitude"] * math.sin(
+            2 * math.pi * d["secondary_frequency"] * active_time
+            + math.radians(d["secondary_phase_deg"])
+        )
+
     return d["value"] + primary + secondary
 
 
@@ -162,10 +181,18 @@ def validate_case(path, require_artifacts=True, allow_legacy=False):
         accepted_experiments.add("V2-LYAPUNOV")
     if manifest.get("experiment") not in accepted_experiments:
         errors.append("wrong experiment manifest")
-    if (disturbance.get("delay_s") != 0 or disturbance.get("duration_s") != duration or
+    wrench_delay = float(disturbance.get("delay_s", 0.0))
+    wrench_duration = float(disturbance.get("duration_s", 0.0))
+
+    if (wrench_delay < 0 or wrench_duration <= 0 or
+            abs((wrench_delay + wrench_duration) - duration) > 1e-9 or
             disturbance.get("withdrawn_during_recording") is not False):
-        errors.append("wrench schedule must cover the full recorded interval")
-    if disturbance.get("axis") not in ("fy", "tx") or disturbance.get("reference_frame") != "world":
+        errors.append(
+            "wrench schedule must start at its declared delay and remain active to recording end"
+        )
+
+    if (disturbance.get("axis") not in WRENCH_FIELDS or
+            disturbance.get("reference_frame") != "world"):
         errors.append("unsupported wrench axis/frame")
     required = {"state.csv": STATE_FIELDS + LINEAR_VELOCITY_FIELDS,
                 "wrench.csv": WRENCH_FIELDS + (
@@ -173,7 +200,24 @@ def validate_case(path, require_artifacts=True, allow_legacy=False):
                     "reference_point_z",
                     "service_called", "clear_success", "service_success")}
     diagnostic_name = None
-    if manifest["method"] in ADAPTIVE_METHODS:
+    if manifest["method"] in ("eth_adaptive_clf_mpc", "eth_reference_faithful"):
+        required["eth_adaptive.csv"] = (
+            "snapshot_time",
+            "snapshot_version",
+            "pi_hat_m",
+            "pi_hat_hx", "pi_hat_hy", "pi_hat_hz",
+            "pi_hat_jxx", "pi_hat_jxy", "pi_hat_jxz",
+            "pi_hat_jyy", "pi_hat_jyz", "pi_hat_jzz",
+            "pi_hat_fx_base", "pi_hat_fy_base", "pi_hat_fz_base",
+            "pi_hat_tx_base", "pi_hat_ty_base", "pi_hat_tz_base",
+            "estimated_yupi_world_com_fx",
+            "estimated_yupi_world_com_fy",
+            "estimated_yupi_world_com_fz",
+            "estimated_yupi_world_com_tx",
+            "estimated_yupi_world_com_ty",
+            "estimated_yupi_world_com_tz",
+        )
+    elif manifest["method"] in ADAPTIVE_METHODS:
         diagnostic_name = adaptive_record_name(manifest["method"])
         method_required = (V5_DIAGNOSTIC_REQUIRED +
                             (("v6_enabled", "v6_rbf_enabled") if manifest["method"] == "v6_variable_gain"
@@ -196,7 +240,7 @@ def validate_case(path, require_artifacts=True, allow_legacy=False):
                 "clf_ec_value","clf_ec_violation","clf_ec_slack","wbc_status") + tuple(
                     group+"_"+axis for group in ("ee","er","ec","equivalent_wrench_body","reconstructed_reference_body")
                     for axis in ("x","y","z","rx","ry","rz"))
-    else:
+    elif manifest["method"] != "pure_mpc":
         required["shadow.csv"] = SHADOW_ESTIMATE_FIELDS
     shared_start = None
     diagnostic_summary = None
@@ -254,10 +298,20 @@ def validate_case(path, require_artifacts=True, allow_legacy=False):
                             for r in in_window for a in ("x", "y", "z"))):
                     errors.append("wrench.csv: nonzero/legacy world reference point adds an unrequested moment")
                 for row in in_window:
-                    expected_call = 0 if disturbance["profile"] == "none" else 1
+                    elapsed_row = float(row["wall_elapsed"])
+                    active = (
+                        disturbance["profile"] != "none"
+                        and wrench_delay <= elapsed_row
+                        < wrench_delay + wrench_duration
+                    )
+                    expected_call = 1 if active else 0
+
                     if (float(row["service_called"]) != expected_call or
-                            any(float(row[k]) != 1 for k in ("clear_success", "service_success"))):
-                        errors.append("wrench.csv: apply/clear status differs from frozen conditions")
+                            any(float(row[k]) != 1
+                                for k in ("clear_success", "service_success"))):
+                        errors.append(
+                            "wrench.csv: apply/clear status differs from frozen conditions"
+                        )
                         break
                 if any(any(abs(float(r[axis]) - (expected_force(disturbance, float(r["wall_elapsed"]))
                                                      if axis == disturbance["axis"] else 0.0)) > 0.05
@@ -786,7 +840,7 @@ def plot_group(cases, output, stem, dpi=300):
     import matplotlib.pyplot as plt
     import numpy as np
     from matplotlib.lines import Line2D
-    current=("v11_equivalent_wrench","eth","liu_van_mpc_port","zhou_ssi")
+    current=("pure_mpc","v11_equivalent_wrench","direct_wrench","eth","liu_van_mpc_port","zhou_ssi")
     if any(c["manifest"]["method"] not in current for c in cases):
         raise ValueError("Archived methods require their archived plotting script")
     plt.rcParams.update({"font.size":10,"axes.titlesize":11,
@@ -822,7 +876,7 @@ def plot_group(cases, output, stem, dpi=300):
             estimate=np.column_stack([numbers(drows,"equivalent_wrench_body_"+a) for a in axes])
             reconstructed=np.column_stack([numbers(drows,"reconstructed_reference_body_"+a) for a in axes])
             reconstructed[np.asarray(numbers(drows,"prediction_valid"))!=1]=np.nan
-        else:
+        elif m["method"] != "pure_mpc":
             drows=case["data"]["shadow"]["rows"]
             dt=np.asarray(numbers(drows,"wall_elapsed"))
             # Existing comparator interface defines raw estimator outputs as
@@ -834,6 +888,10 @@ def plot_group(cases, output, stem, dpi=300):
             force=np.einsum("nji,nj->ni",dR,raw[:,:3])
             moment=np.einsum("nji,nj->ni",dR,raw[:,3:])+np.cross(com_to_base,force)
             estimate=np.column_stack((force,moment));reconstructed=None
+        else:
+            # Pure MPC deliberately has no estimator or compensation wrench.
+            # Leave this panel empty rather than inventing an all-zero estimate.
+            dt=np.empty(0); estimate=np.empty((0,6)); reconstructed=None
         prepared.append(dict(case=case,t=t,actual=actual,target=reference,
                              dt=dt,estimate=estimate,reconstructed=reconstructed))
         metrics.append(metric)
@@ -900,7 +958,7 @@ def main(argv=None):
     output=args.output or input_root/("figures_"+datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ"))
     output.mkdir(parents=True,exist_ok=False)
     cases,report=[],{}
-    current={"v11_equivalent_wrench","eth","liu_van_mpc_port","zhou_ssi"}
+    current={"pure_mpc","v11_equivalent_wrench","direct_wrench","eth","liu_van_mpc_port","zhou_ssi"}
     for path in paths:
         try:
             case=load_case(path)

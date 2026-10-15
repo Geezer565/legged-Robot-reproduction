@@ -19,6 +19,12 @@
 #include "legged_interface/cost/LeggedRobotQuadraticTrackingCost.h"
 #include "legged_interface/initialization/LeggedRobotInitializer.h"
 
+#include <ocs2_legged_robot_adaptive/adaptive/AdaptiveModelData.h>
+#include <ocs2_legged_robot_adaptive/adaptive/AdaptiveParameterUpdateModule.h>
+#include <ocs2_legged_robot_adaptive/adaptive/AdaptiveTypes.h>
+#include <ocs2_legged_robot_adaptive/constraint/AdaptiveClfConstraint.h>
+#include <ocs2_legged_robot_adaptive/dynamics/AdaptiveLeggedRobotDynamics.h>
+
 #include <ocs2_centroidal_model/AccessHelperFunctions.h>
 #include <ocs2_centroidal_model/CentroidalModelPinocchioMapping.h>
 #include <ocs2_centroidal_model/FactoryFunctions.h>
@@ -38,6 +44,14 @@
 #include <boost/filesystem/path.hpp>
 
 namespace legged {
+const ocs2::legged_robot_adaptive::adaptive::AdaptiveClfSettings&
+LeggedInterface::getEthAdaptiveSettings() const {
+  if (!ethAdaptiveSettings_) {
+    throw std::runtime_error("ETH adaptive settings requested while ETH is disabled");
+  }
+  return *ethAdaptiveSettings_;
+}
+
 LeggedInterface::LeggedInterface(const std::string& taskFile, const std::string& urdfFile, const std::string& referenceFile,
                                  bool useHardFrictionConeConstraint)
     : useHardFrictionConeConstraint_(useHardFrictionConeConstraint) {
@@ -113,6 +127,33 @@ void LeggedInterface::setupOptimalControlProblem(const std::string& taskFile, co
         std::make_unique<StateInputSoftConstraint>(
             std::make_unique<adaptive::MyRbfV11Clf>(*problemPtr_->dynamicsPtr,centroidalModelInfo_,myRbfV2Snapshots_),
             std::make_unique<SquaredHingePenalty>(SquaredHingePenalty::Config(penaltyWeight,0.0))));
+  }
+  if (ethAdaptiveEnabled()) {
+    namespace eth = ocs2::legged_robot_adaptive;
+    ethAdaptiveSettings_ = std::make_unique<eth::adaptive::AdaptiveClfSettings>(
+        eth::adaptive::loadAdaptiveClfSettings(ethAdaptiveSettingsFile_));
+    const auto& settings = *ethAdaptiveSettings_;
+    ethModelDataPtr_ = std::make_shared<eth::adaptive::AdaptiveModelData>(
+        eth::adaptive::AdaptiveModelSnapshot::createValid(
+            settings.initialParameterEstimate, 0.0, 1));
+    ethParameterUpdateModulePtr_ =
+        std::make_shared<eth::adaptive::AdaptiveParameterUpdateModule>(
+            *pinocchioInterfacePtr_, centroidalModelInfo_, settings,
+            ethModelDataPtr_);
+    problemPtr_->dynamicsPtr = std::make_unique<eth::AdaptiveLeggedRobotDynamics>(
+        *pinocchioInterfacePtr_, centroidalModelInfo_, "eth_paper_srbd", modelSettings_,
+        settings, ethModelDataPtr_, referenceManagerPtr_.get());
+    if (settings.enableClfConstraint) {
+      auto constraint = std::make_shared<eth::AdaptiveClfConstraint>(
+          *pinocchioInterfacePtr_, centroidalModelInfo_, *referenceManagerPtr_,
+          settings, ethModelDataPtr_);
+      const RelaxedBarrierPenalty::Config penalty{settings.softConstraintMu,
+                                                   settings.softConstraintDelta};
+      problemPtr_->softConstraintPtr->add(
+          "eth_adaptive_clf_eq11", std::make_unique<StateInputSoftConstraint>(
+              std::unique_ptr<StateInputConstraint>(constraint->clone()),
+              std::make_unique<RelaxedBarrierPenalty>(penalty)));
+    }
   }
 
   // Cost terms

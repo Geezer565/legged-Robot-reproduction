@@ -133,23 +133,144 @@ void LeggedHWSim::readSim(ros::Time time, ros::Duration period) {
     imu.linearAcc_[2] = accel.Z();
   }
 
-  // Contact Sensor
+  // ---------------------------------------------------------------------------
+  // Contact Sensor + diagnostic-only physical Gazebo contact force
+  //
+  // IMPORTANT:
+  //   1. The original boolean contact logic is preserved.
+  //   2. The wrench is read directly from Gazebo ContactManager.
+  //   3. It is NEVER fed into MPC / WBC / RBF.
+  //   4. This is privileged simulation ground truth for observability diagnosis.
+  //
+  // Gazebo ODE stores Contact::wrench body forces in each collision
+  // LINK frame.  We explicitly rotate the selected robot-foot force back
+  // into WORLD frame before accumulating the physical GRF.
+  // ---------------------------------------------------------------------------
+
   for (auto& state : name2contact_) {
     state.second = false;
   }
+
+  double directTotalFootFzWorld = 0.0;
+  int directContactPointCount = 0;
+
   for (const auto& contact : contactManager_->GetContacts()) {
     if (static_cast<uint32_t>(contact->time.sec) != (time - period).sec ||
         static_cast<uint32_t>(contact->time.nsec) != (time - period).nsec) {
       continue;
     }
-    std::string linkName = contact->collision1->GetLink()->GetName();
-    if (name2contact_.find(linkName) != name2contact_.end()) {
-      name2contact_[linkName] = true;
+
+    const std::string linkName1 =
+        contact->collision1->GetLink()->GetName();
+
+    const std::string linkName2 =
+        contact->collision2->GetLink()->GetName();
+
+    const bool robotFootIsBody1 =
+        name2contact_.find(linkName1) != name2contact_.end();
+
+    const bool robotFootIsBody2 =
+        name2contact_.find(linkName2) != name2contact_.end();
+
+    // Preserve the production contact-boolean behavior.
+    if (robotFootIsBody1) {
+      name2contact_[linkName1] = true;
     }
-    linkName = contact->collision2->GetLink()->GetName();
-    if (name2contact_.find(linkName) != name2contact_.end()) {
-      name2contact_[linkName] = true;
+
+    if (robotFootIsBody2) {
+      name2contact_[linkName2] = true;
     }
+
+    // Sum every contact point belonging to a robot foot.
+    //
+    // body1Force = force acting on collision1's body
+    // body2Force = force acting on collision2's body
+    //
+    // Therefore this always selects the force ACTING ON THE ROBOT FOOT,
+    // regardless of whether Gazebo happened to store the robot as body1
+    // or body2.
+    for (int k = 0; k < contact->count; ++k) {
+      // IMPORTANT:
+      // Gazebo ODE stores contact->wrench body1/body2 forces
+      // in the corresponding LINK frame, not in world frame.
+      //
+      // Convert the force acting on the robot foot back to WORLD
+      // before taking its vertical component.
+      if (robotFootIsBody1) {
+        const auto footForceWorld =
+            contact->collision1->GetLink()
+                ->WorldPose().Rot()
+                .RotateVector(
+                    contact->wrench[k].body1Force);
+
+        directTotalFootFzWorld +=
+            footForceWorld.Z();
+
+        ++directContactPointCount;
+      }
+
+      if (robotFootIsBody2) {
+        const auto footForceWorld =
+            contact->collision2->GetLink()
+                ->WorldPose().Rot()
+                .RotateVector(
+                    contact->wrench[k].body2Force);
+
+        directTotalFootFzWorld +=
+            footForceWorld.Z();
+
+        ++directContactPointCount;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 1-second simulation-time mean.
+  //
+  // Contact force during trot is highly oscillatory, so instantaneous Fz is
+  // not useful for comparing 0 kg vs +5 kg.  We accumulate it over ~1 s.
+  // ---------------------------------------------------------------------------
+
+  static ros::Time directDiagStart;
+  static double directDiagFzSum = 0.0;
+  static double directDiagContactPointSum = 0.0;
+  static unsigned long long directDiagSamples = 0;
+
+  // Handle startup / simulation reset.
+  if (directDiagStart.isZero() || time < directDiagStart) {
+    directDiagStart = time;
+    directDiagFzSum = 0.0;
+    directDiagContactPointSum = 0.0;
+    directDiagSamples = 0;
+  }
+
+  directDiagFzSum += directTotalFootFzWorld;
+  directDiagContactPointSum +=
+      static_cast<double>(directContactPointCount);
+  ++directDiagSamples;
+
+  if ((time - directDiagStart).toSec() >= 1.0 &&
+      directDiagSamples > 0) {
+
+    const double meanFz =
+        directDiagFzSum /
+        static_cast<double>(directDiagSamples);
+
+    const double meanContactPoints =
+        directDiagContactPointSum /
+        static_cast<double>(directDiagSamples);
+
+    ROS_WARN_STREAM(
+        "[GAZEBO_CONTACT_DIRECT]"
+        << " t=" << time.toSec()
+        << " mean_total_foot_fz_world=" << meanFz
+        << " mean_contact_points=" << meanContactPoints
+        << " samples=" << directDiagSamples);
+
+    directDiagStart = time;
+    directDiagFzSum = 0.0;
+    directDiagContactPointSum = 0.0;
+    directDiagSamples = 0;
   }
 
   // Set cmd to zero to avoid crazy soft limit oscillation when not controller loaded
